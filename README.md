@@ -19,7 +19,7 @@ Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/
 
 ### From a release zip
 
-1. Download the latest `jellyfin-plugin-tmdbsearch_*.zip` from [Releases](https://github.com/kurtinvernon/jellyfin-tmdb-search/releases).
+1. Download the latest `jellyfin-plugin-tmdbsearch_*.zip` from [Releases](https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases).
 2. Extract into your Jellyfin plugins folder:
    - Docker/Linux: `/config/plugins/TMDB Search/`
    - macOS: `~/.local/share/jellyfin/plugins/TMDB Search/`
