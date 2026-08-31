@@ -42,21 +42,59 @@ public sealed class GelatoMetaBridge
     }
 
     /// <summary>
-    /// Stores a minimal Stremio meta object in Gelato's cache for the given search GUID.
+    /// Copies TMDB search fields onto a Gelato StremioMeta instance via public setters.
+    /// </summary>
+    /// <param name="meta">Target meta object (Gelato.StremioMeta or a test double).</param>
+    /// <param name="typeValue">Gelato/Stremio media type enum value.</param>
+    /// <param name="externalId">Stremio external id (tmdb:{id}).</param>
+    /// <param name="name">Display title.</param>
+    /// <param name="poster">Absolute poster URL.</param>
+    /// <param name="description">Plot overview.</param>
+    public static void PopulateMeta(
+        object meta,
+        object typeValue,
+        string externalId,
+        string? name,
+        string? poster,
+        string? description)
+    {
+        ArgumentNullException.ThrowIfNull(meta);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalId);
+
+        SetProperty(meta, "Type", typeValue);
+        SetProperty(meta, "Id", externalId);
+        SetProperty(meta, "Name", name);
+        SetProperty(meta, "Poster", poster);
+        SetProperty(meta, "Description", description);
+    }
+
+    /// <summary>
+    /// Stores a Stremio meta object in Gelato's cache for the given search GUID.
     /// </summary>
     /// <param name="guid">Deterministic Gelato search GUID.</param>
     /// <param name="kind">Movie or series.</param>
-    /// <param name="externalId">Stremio external id (IMDb or tmdb:).</param>
-    /// <param name="imdbId">Optional IMDb id for Gelato meta fetch.</param>
-    public void SaveSearchMeta(Guid guid, StremioMediaKind kind, string externalId, string? imdbId)
+    /// <param name="externalId">Stremio external id (tmdb:).</param>
+    /// <param name="name">Display title from TMDB.</param>
+    /// <param name="poster">Absolute TMDB poster URL.</param>
+    /// <param name="description">Plot overview from TMDB.</param>
+    public void SaveSearchMeta(
+        Guid guid,
+        StremioMediaKind kind,
+        string externalId,
+        string? name,
+        string? poster,
+        string? description)
     {
         EnsureLookup();
-        if (_saveMetaMethod is null || _metaType is null || _mediaTypeEnum is null)
+        if (_saveMetaMethod is null
+            || _metaType is null
+            || _mediaTypeEnum is null
+            || _managerType is null)
         {
             return;
         }
 
-        var manager = _services.GetService(_managerType!);
+        var manager = _services.GetService(_managerType);
         if (manager is null)
         {
             return;
@@ -71,10 +109,7 @@ public sealed class GelatoMetaBridge
             }
 
             var enumValue = Enum.Parse(_mediaTypeEnum, kind.ToString());
-            SetProperty(meta, "Type", enumValue);
-            SetProperty(meta, "Id", externalId);
-            SetProperty(meta, "ImdbId", imdbId);
-
+            PopulateMeta(meta, enumValue, externalId, name, poster, description);
             _saveMetaMethod.Invoke(manager, [guid, meta]);
         }
         catch (Exception ex)

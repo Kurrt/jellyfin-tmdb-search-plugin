@@ -69,13 +69,3 @@ internal sealed class TmdbSearchResultRow
     [JsonPropertyName("popularity")]
     public double Popularity { get; set; }
 }
-
-/// <summary>
-/// TMDB external ids response for a movie or TV show.
-/// </summary>
-internal sealed class TmdbExternalIdsResponse
-{
-    /// <summary>Gets or sets the IMDb id.</summary>
-    [JsonPropertyName("imdb_id")]
-    public string? ImdbId { get; set; }
-}

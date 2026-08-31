@@ -2,12 +2,8 @@ using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.TmdbSearch.Configuration;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Dto;
-using MediaBrowser.Controller.Entities;
-using MediaBrowser.Controller.Entities.Movies;
-using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Dto;
-using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -16,12 +12,10 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.TmdbSearch;
 
 /// <summary>
-/// Intercepts Jellyfin Items search and serves TMDB results instead of SQL/Stremio search.
+/// Intercepts Jellyfin Items search and serves Remux-style TMDB results.
 /// </summary>
 public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
 {
-    private const string TmdbImageBase = "https://image.tmdb.org/t/p/w500";
-
     private readonly TmdbClient _tmdbClient;
     private readonly TmdbLibraryIndex _libraryIndex;
     private readonly GelatoMetaBridge _gelatoBridge;
@@ -111,18 +105,21 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         }
 
         var language = ResolveLanguage(config);
-        using var searchTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-        var hits = await _tmdbClient
-            .SearchAsync(searchTerm, requestedTypes, config, language, searchTimeout.Token)
-            .ConfigureAwait(false);
-
-        if (hits is null)
+        IReadOnlyList<TmdbSearchHit> hits;
+        try
         {
-            _logger.LogWarning(
-                "TMDB search passthrough for \"{Query}\": TMDB request failed or timed out",
-                searchTerm);
-            await next().ConfigureAwait(false);
-            return;
+            hits = await _tmdbClient
+                .SearchAsync(searchTerm, requestedTypes, config, language, ctx.HttpContext.RequestAborted)
+                .ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ctx.HttpContext.RequestAborted.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "TMDB search failed for \"{Query}\"; returning empty results", searchTerm);
+            hits = [];
         }
 
         var pagedHits = hits.Skip(startIndex).Take(limit).ToArray();
@@ -166,53 +163,18 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
                 }
             }
 
-            var externalId = StremioGuidHelper.BuildExternalId(imdbId: null, hit.TmdbId);
-            var stremioKind = StremioGuidHelper.ToStremioKind(hit.Kind);
-            if (stremioKind is null)
-            {
-                continue;
-            }
-
-            var stubItem = CreateStubItem(hit);
-            var dto = _dtoService.GetBaseItemDto(stubItem, options);
-            dto.Id = StremioGuidHelper.ToGuid(stremioKind.Value, externalId);
-            dtos.Add(dto);
-
-            _gelatoBridge.SaveSearchMeta(dto.Id, stremioKind.Value, externalId, imdbId: null);
+            var stub = SearchResultDtoBuilder.CreateStub(hit);
+            dtos.Add(stub.Dto);
+            _gelatoBridge.SaveSearchMeta(
+                stub.Gelato.Guid,
+                stub.Gelato.Kind,
+                stub.Gelato.ExternalId,
+                stub.Gelato.Name,
+                stub.Gelato.PosterUrl,
+                stub.Gelato.Description);
         }
 
         return dtos;
-    }
-
-    private static BaseItem CreateStubItem(TmdbSearchHit hit)
-    {
-        BaseItem item = hit.Kind == BaseItemKind.Movie
-            ? new Movie()
-            : new Series();
-
-        item.Name = hit.Title;
-        item.Overview = hit.Overview;
-        if (hit.Year.HasValue)
-        {
-            item.ProductionYear = hit.Year.Value;
-            item.PremiereDate = new DateTime(hit.Year.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        }
-
-        item.SetProviderId(MetadataProvider.Tmdb, hit.TmdbId.ToString());
-
-        if (!string.IsNullOrWhiteSpace(hit.PosterPath))
-        {
-            item.ImageInfos =
-            [
-                new ItemImageInfo
-                {
-                    Type = ImageType.Primary,
-                    Path = $"{TmdbImageBase}{hit.PosterPath}",
-                },
-            ];
-        }
-
-        return item;
     }
 
     private string ResolveLanguage(PluginConfiguration config)
