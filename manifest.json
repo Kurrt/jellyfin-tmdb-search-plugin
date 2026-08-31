@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.4.0",
+        "changelog": "TMDB-only sidebar settings using standard Jellyfin plugin config save pattern",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.4/jellyfin-plugin-tmdbsearch_1.0.4.0.zip",
+        "checksum": "51a68372582e2eb6d5087f1cf7c8334f",
+        "timestamp": "2026-08-31T06:30:00Z"
+      },
+      {
         "version": "1.0.3.0",
         "changelog": "Gelato-style settings pane with dedicated /TmdbSearch/Configuration API; fix config script not executing",
         "targetAbi": "10.11.0.0",

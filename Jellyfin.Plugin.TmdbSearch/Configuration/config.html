@@ -1,146 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TMDB Search</title>
+    <meta charset="utf-8">
+    <title>TMDB Search</title>
 </head>
-
 <body>
-  <div data-role="page" id="tmdbSearchConfigurationPage" class="page type-interior pluginConfigurationPage">
-    <div data-role="content">
-      <div class="content-primary">
-        <form id="tmdbSearchForm">
-          <div class="verticalSection">
-            <div class="sectionTitleContainer flex align-items-center">
-              <h2 class="sectionTitle">TMDB Search</h2>
+    <div id="tmdbSearchConfigPage" data-role="page" class="page type-interior pluginConfigurationPage configPage" data-require="emby-input,emby-button,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="tmdbSearchConfigForm" class="configForm">
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">TMDB Search</h2>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="TmdbApiKey">TMDB API Key</label>
+                        <input id="TmdbApiKey" name="TmdbApiKey" type="password" is="emby-input" autocomplete="off" />
+                        <div class="fieldDescription">Your TMDB v3 API key from themoviedb.org/settings/api</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="Language">Language</label>
+                        <input id="Language" name="Language" type="text" is="emby-input" placeholder="en-US" />
+                        <div class="fieldDescription">TMDB language code. Leave empty to use the server metadata language.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="IncludeAdult" name="IncludeAdult" type="checkbox" is="emby-checkbox" />
+                            <span>Include adult content</span>
+                        </label>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="CacheTtlSeconds">Search cache TTL (seconds)</label>
+                        <input id="CacheTtlSeconds" name="CacheTtlSeconds" type="number" is="emby-input" min="0" value="600" />
+                        <div class="fieldDescription">How long identical search queries are cached in memory (default 600).</div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
             </div>
-          </div>
+        </div>
 
-          <div class="verticalSection verticalSection-extrabottompadding">
-            <p class="fieldDescription">
-              Fast TMDB-backed library search for movies and series. Configure your API key below, then disable Gelato search so this plugin handles discovery.
-            </p>
-
-            <div class="inputContainer">
-              <label class="inputLabel inputLabelUnfocused" for="txtTmdbApiKey">TMDB API Key</label>
-              <input is="emby-input" type="password" id="txtTmdbApiKey" class="emby-input" autocomplete="off" />
-              <div class="fieldDescription">
-                Your TMDB v3 API key from <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a>
-              </div>
-            </div>
-
-            <div class="inputContainer">
-              <label class="inputLabel inputLabelUnfocused" for="txtLanguage">Language</label>
-              <input is="emby-input" type="text" id="txtLanguage" class="emby-input" placeholder="en-US" />
-              <div class="fieldDescription">TMDB language code. Leave empty to use the server metadata language.</div>
-            </div>
-
-            <div class="checkboxContainer checkboxContainer-withDescription">
-              <label>
-                <input is="emby-checkbox" type="checkbox" id="chkIncludeAdult" />
-                <span>Include adult content</span>
-              </label>
-            </div>
-
-            <div class="inputContainer">
-              <label class="inputLabel inputLabelUnfocused" for="txtCacheTtl">Search cache TTL (seconds)</label>
-              <input is="emby-input" type="number" id="txtCacheTtl" class="emby-input" min="0" value="600" />
-              <div class="fieldDescription">How long identical search queries are cached in memory.</div>
-            </div>
-          </div>
-
-          <div>
-            <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-              <span>Save</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <script type="text/javascript">
-      (function () {
-        const pageId = 'tmdbSearchConfigurationPage';
-        const page = document.querySelector('#' + pageId);
-        const form = document.querySelector('#tmdbSearchForm');
-        const txtTmdbApiKey = document.querySelector('#txtTmdbApiKey');
-        const txtLanguage = document.querySelector('#txtLanguage');
-        const chkIncludeAdult = document.querySelector('#chkIncludeAdult');
-        const txtCacheTtl = document.querySelector('#txtCacheTtl');
-
-        function configUrl() {
-          return window.ApiClient.getUrl('TmdbSearch/Configuration');
-        }
-
-        function readInputValue(input) {
-          if (!input) {
-            return '';
-          }
-
-          if (typeof input.value === 'string') {
-            return input.value;
-          }
-
-          if (input.inputElement && typeof input.inputElement.value === 'string') {
-            return input.inputElement.value;
-          }
-
-          return '';
-        }
-
-        async function loadConfig() {
-          Dashboard.showLoadingMsg();
-          try {
-            const cfg = await window.ApiClient.getJSON(configUrl());
-            txtTmdbApiKey.value = cfg.TmdbApiKey || cfg.tmdbApiKey || '';
-            txtLanguage.value = cfg.Language || cfg.language || '';
-            chkIncludeAdult.checked = cfg.IncludeAdult === true || cfg.includeAdult === true;
-            txtCacheTtl.value = cfg.CacheTtlSeconds || cfg.cacheTtlSeconds || 600;
-          } catch (error) {
-            console.error('TMDB Search: failed to load settings', error);
-          } finally {
-            Dashboard.hideLoadingMsg();
-          }
-        }
-
-        async function saveConfig(event) {
-          event.preventDefault();
-          Dashboard.showLoadingMsg();
-
-          try {
-            const payload = {
-              TmdbApiKey: readInputValue(txtTmdbApiKey).trim(),
-              Language: readInputValue(txtLanguage).trim(),
-              IncludeAdult: chkIncludeAdult.checked === true,
-              CacheTtlSeconds: parseInt(readInputValue(txtCacheTtl), 10) || 600
+        <script type="text/javascript">
+            var TmdbSearchConfig = {
+                pluginUniqueId: 'a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b'
             };
 
-            await window.ApiClient.ajax({
-              type: 'POST',
-              url: configUrl(),
-              data: JSON.stringify(payload),
-              contentType: 'application/json'
-            });
+            (function () {
+                var page = document.querySelector('#tmdbSearchConfigPage');
+                var form = document.querySelector('#tmdbSearchConfigForm');
+                var listenersBound = false;
 
-            Dashboard.processPluginConfigurationUpdateResult();
-          } catch (error) {
-            console.error('TMDB Search: failed to save settings', error);
-          } finally {
-            Dashboard.hideLoadingMsg();
-          }
-        }
+                function populateForm(config) {
+                    document.querySelector('#TmdbApiKey').value = config.TmdbApiKey || '';
+                    document.querySelector('#Language').value = config.Language || '';
+                    document.querySelector('#IncludeAdult').checked = config.IncludeAdult === true;
+                    document.querySelector('#CacheTtlSeconds').value = config.CacheTtlSeconds || 600;
+                }
 
-        function init() {
-          form.addEventListener('submit', saveConfig);
-          loadConfig();
-        }
+                function loadConfig() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(TmdbSearchConfig.pluginUniqueId).then(function (config) {
+                        populateForm(config);
+                        Dashboard.hideLoadingMsg();
+                    }).catch(function (error) {
+                        console.error('TMDB Search: failed to load settings', error);
+                        Dashboard.hideLoadingMsg();
+                    });
+                }
 
-        page.addEventListener('pageshow', init);
-      })();
-    </script>
-  </div>
+                function saveConfig(e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+
+                    ApiClient.getPluginConfiguration(TmdbSearchConfig.pluginUniqueId).then(function (config) {
+                        config.TmdbApiKey = document.querySelector('#TmdbApiKey').value;
+                        config.Language = document.querySelector('#Language').value;
+                        config.IncludeAdult = document.querySelector('#IncludeAdult').checked;
+                        config.CacheTtlSeconds = parseInt(document.querySelector('#CacheTtlSeconds').value, 10) || 600;
+
+                        return ApiClient.updatePluginConfiguration(TmdbSearchConfig.pluginUniqueId, config);
+                    }).then(function () {
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    }).catch(function (error) {
+                        console.error('TMDB Search: failed to save settings', error);
+                        Dashboard.hideLoadingMsg();
+                    });
+
+                    return false;
+                }
+
+                page.addEventListener('pageshow', function () {
+                    if (!listenersBound) {
+                        form.addEventListener('submit', saveConfig);
+                        listenersBound = true;
+                    }
+
+                    loadConfig();
+                });
+            })();
+        </script>
+    </div>
 </body>
-
 </html>
