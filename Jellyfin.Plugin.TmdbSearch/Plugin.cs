@@ -4,6 +4,7 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.TmdbSearch;
 
@@ -22,11 +23,18 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// </summary>
     /// <param name="applicationPaths">Server application paths.</param>
     /// <param name="xmlSerializer">XML serializer for plugin configuration.</param>
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+    /// <param name="logger">Logger instance.</param>
+    public Plugin(
+        IApplicationPaths applicationPaths,
+        IXmlSerializer xmlSerializer,
+        ILogger<Plugin> logger)
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+        _logger = logger;
     }
+
+    private readonly ILogger<Plugin> _logger;
 
     /// <inheritdoc />
     public override string Name => "TMDB Search";
@@ -50,12 +58,25 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         [
             new PluginPageInfo
             {
-                Name = Name,
+                Name = "config",
+                DisplayName = Name,
+                EnableInMainMenu = true,
                 EmbeddedResourcePath = string.Format(
                     CultureInfo.InvariantCulture,
                     "{0}.Configuration.config.html",
                     GetType().Namespace)
             }
         ];
+    }
+
+    /// <inheritdoc />
+    public override void UpdateConfiguration(BasePluginConfiguration configuration)
+    {
+        var config = (PluginConfiguration)configuration;
+        base.UpdateConfiguration(config);
+
+        _logger.LogInformation(
+            "TMDB Search configuration updated (api key configured: {HasKey})",
+            !string.IsNullOrWhiteSpace(config.TmdbApiKey));
     }
 }

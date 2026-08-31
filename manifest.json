@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.3.0",
+        "changelog": "Gelato-style settings pane with dedicated /TmdbSearch/Configuration API; fix config script not executing",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.3/jellyfin-plugin-tmdbsearch_1.0.3.0.zip",
+        "checksum": "09c9b622f8fb6cb7fd8292c40286c35c",
+        "timestamp": "2026-08-31T06:22:00Z"
+      },
+      {
         "version": "1.0.2.0",
         "changelog": "Fix plugin settings page not saving TMDB API key",
         "targetAbi": "10.11.0.0",

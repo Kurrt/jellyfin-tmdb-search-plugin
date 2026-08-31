@@ -59,9 +59,10 @@ Restart Jellyfin after copying the DLL.
 
 ## Configure
 
-1. Open **Dashboard → Plugins → TMDB Search**.
-2. Paste your TMDB API key and click **Save**.
-3. Restart Jellyfin if search does not pick up the key immediately.
+Open settings from **Dashboard → TMDB Search** (sidebar under Plugins, Gelato-style) or **Dashboard → Plugins → TMDB Search → Settings**.
+
+1. Paste your TMDB API key and click **Save** — you should see "Settings saved".
+2. Refresh the page to confirm the key persists.
 
 Optional settings:
 
