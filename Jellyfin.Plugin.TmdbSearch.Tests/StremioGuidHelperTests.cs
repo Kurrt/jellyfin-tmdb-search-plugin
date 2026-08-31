@@ -54,6 +54,19 @@ public class StremioGuidHelperTests
     }
 
     /// <summary>
+    /// Verifies unowned TMDB search stubs use Gelato's stremio://movie/tmdb:{id} GUID.
+    /// </summary>
+    [Fact]
+    public void ToGuid_MovieTmdbPrefixMatchesStremioUri()
+    {
+        var guid = StremioGuidHelper.ToGuid(StremioMediaKind.Movie, "tmdb:550");
+        var expected = StremioGuidHelper.ToGuid(StremioMediaKind.Movie, StremioGuidHelper.BuildExternalId(null, 550));
+
+        Assert.Equal(expected, guid);
+        Assert.NotEqual(Guid.Empty, guid);
+    }
+
+    /// <summary>
     /// Verifies only movie and series kinds map to Stremio media kinds.
     /// </summary>
     [Fact]

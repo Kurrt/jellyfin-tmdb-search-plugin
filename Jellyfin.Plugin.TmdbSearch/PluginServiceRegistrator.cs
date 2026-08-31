@@ -14,11 +14,16 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection services, IServerApplicationHost applicationHost)
     {
         services.AddHttpClient<TmdbClient>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.themoviedb.org/");
-            client.Timeout = TimeSpan.FromSeconds(20);
-            client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-        });
+            {
+                client.BaseAddress = new Uri("https://api.themoviedb.org/");
+                client.Timeout = TmdbClient.HttpTimeout;
+                client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+            })
+            .ConfigurePrimaryHttpMessageHandler(static () => new SocketsHttpHandler
+            {
+                ConnectTimeout = TmdbClient.ConnectTimeout,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            });
 
         services.AddSingleton<TmdbLibraryIndex>();
         services.AddSingleton<GelatoMetaBridge>();
