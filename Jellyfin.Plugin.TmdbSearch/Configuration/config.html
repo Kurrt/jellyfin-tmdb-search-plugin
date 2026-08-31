@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>TMDB Search</title>
+</head>
+<body>
+    <div id="TmdbSearchConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div class="content-primary">
+            <form id="TmdbSearchConfigForm">
+                <div class="verticalSection verticalSection-extrabottompadding">
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">TMDB Search</h2>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="TmdbApiKey">TMDB API Key</label>
+                        <input id="TmdbApiKey" name="TmdbApiKey" type="password" is="emby-input" />
+                        <div class="fieldDescription">Your TMDB v3 API key from themoviedb.org/settings/api</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="Language">Language</label>
+                        <input id="Language" name="Language" type="text" is="emby-input" placeholder="en-US" />
+                        <div class="fieldDescription">TMDB language code. Leave empty to use the server metadata language.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="IncludeAdult" name="IncludeAdult" type="checkbox" is="emby-checkbox" />
+                            <span>Include adult content</span>
+                        </label>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="CacheTtlSeconds">Search cache TTL (seconds)</label>
+                        <input id="CacheTtlSeconds" name="CacheTtlSeconds" type="number" is="emby-input" min="0" />
+                        <div class="fieldDescription">How long identical search queries are cached in memory (default 600).</div>
+                    </div>
+                </div>
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript">
+        var TmdbSearchConfig = {
+            pluginUniqueId: 'a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b'
+        };
+
+        document.querySelector('#TmdbSearchConfigPage')
+            .addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(TmdbSearchConfig.pluginUniqueId).then(function (config) {
+                    document.querySelector('#TmdbApiKey').value = config.TmdbApiKey || '';
+                    document.querySelector('#Language').value = config.Language || '';
+                    document.querySelector('#IncludeAdult').checked = config.IncludeAdult === true;
+                    document.querySelector('#CacheTtlSeconds').value = config.CacheTtlSeconds || 600;
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+        document.querySelector('#TmdbSearchConfigForm')
+            .addEventListener('submit', function (e) {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(TmdbSearchConfig.pluginUniqueId).then(function (config) {
+                    config.TmdbApiKey = document.querySelector('#TmdbApiKey').value;
+                    config.Language = document.querySelector('#Language').value;
+                    config.IncludeAdult = document.querySelector('#IncludeAdult').checked;
+                    config.CacheTtlSeconds = parseInt(document.querySelector('#CacheTtlSeconds').value, 10) || 600;
+                    ApiClient.updatePluginConfiguration(TmdbSearchConfig.pluginUniqueId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+                e.preventDefault();
+                return false;
+            });
+    </script>
+</body>
+</html>

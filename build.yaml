@@ -1,0 +1,16 @@
+---
+name: "jellyfin-plugin-tmdbsearch"
+guid: "a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b"
+version: "1"
+targetAbi: "10.11.0.0"
+owner: "kurtinvernon"
+overview: "Replace Jellyfin search with TMDB"
+description: >
+  Replaces library Items search with direct TMDB lookup for movies and series.
+  Works with all Jellyfin clients that use the /Items search endpoint.
+category: "General"
+artifacts:
+  - "Jellyfin.Plugin.TmdbSearch.dll"
+build_type: "dotnet"
+dotnet_configuration: "Release"
+dotnet_framework: "net9.0"

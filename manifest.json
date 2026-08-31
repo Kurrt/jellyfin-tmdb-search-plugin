@@ -1,0 +1,20 @@
+[
+  {
+    "guid": "a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b",
+    "name": "TMDB Search",
+    "overview": "Replace Jellyfin search with TMDB",
+    "description": "Replaces library Items search with direct TMDB lookup for movies and series.",
+    "owner": "kurtinvernon",
+    "category": "General",
+    "versions": [
+      {
+        "version": "1.0.0.0",
+        "changelog": "Initial release",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/kurtinvernon/jellyfin-tmdb-search/releases/download/v1.0.0/jellyfin-plugin-tmdbsearch_1.0.0.0.zip",
+        "checksum": "PLACEHOLDER",
+        "timestamp": "2026-08-31T00:00:00Z"
+      }
+    ]
+  }
+]
