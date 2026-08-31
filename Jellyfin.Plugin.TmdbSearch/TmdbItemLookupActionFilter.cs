@@ -60,8 +60,11 @@ public sealed class TmdbItemLookupActionFilter : IAsyncActionFilter, IOrderedFil
                 requestedId,
                 realId);
 
+            // Rewriting ActionArguments is what actually takes effect: model binding has
+            // already run by the time an action filter executes, so the controller reads its
+            // itemId parameter from here. RouteData is deliberately left alone — mutating it
+            // at this point would not change the bound argument and only invites confusion.
             ctx.ActionArguments["itemId"] = realId;
-            ctx.RouteData.Values["itemId"] = realId.ToString("N");
         }
 
         await next().ConfigureAwait(false);

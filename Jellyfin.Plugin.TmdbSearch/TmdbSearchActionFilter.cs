@@ -11,6 +11,7 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.TmdbSearch;
@@ -26,10 +27,16 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     private readonly TmdbLibraryIndex _libraryIndex;
     private readonly TmdbStubRegistry _stubRegistry;
     private readonly GelatoMetaBridge _gelatoBridge;
-    private readonly IDtoService _dtoService;
-    private readonly ILibraryManager _libraryManager;
     private readonly IServerConfigurationManager _serverConfigurationManager;
     private readonly ILogger<TmdbSearchActionFilter> _logger;
+
+    // NOTE: IDtoService and ILibraryManager are deliberately NOT injected here.
+    // This filter is registered as a singleton, and those are request-scoped: capturing
+    // them creates a captive dependency, so after the first request their owning scope is
+    // disposed and every later call throws
+    //   ObjectDisposedException: Cannot access a disposed object. Object name: 'IServiceProvider'
+    // from deep inside DtoService -> ChapterRepository -> PooledDbContextFactory.
+    // They are resolved per-request from HttpContext.RequestServices instead.
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TmdbSearchActionFilter"/> class.
@@ -39,8 +46,6 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         TmdbLibraryIndex libraryIndex,
         TmdbStubRegistry stubRegistry,
         GelatoMetaBridge gelatoBridge,
-        IDtoService dtoService,
-        ILibraryManager libraryManager,
         IServerConfigurationManager serverConfigurationManager,
         ILogger<TmdbSearchActionFilter> logger)
     {
@@ -48,8 +53,6 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         _libraryIndex = libraryIndex;
         _stubRegistry = stubRegistry;
         _gelatoBridge = gelatoBridge;
-        _dtoService = dtoService;
-        _libraryManager = libraryManager;
         _serverConfigurationManager = serverConfigurationManager;
         _logger = logger;
     }
@@ -129,7 +132,14 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         }
 
         var pagedHits = hits.Skip(startIndex).Take(limit).ToArray();
-        var dtos = BuildResultDtos(pagedHits);
+
+        // Resolved per-request: these are scoped services and must not be captured by this
+        // singleton filter (see the note on the constructor).
+        var services = ctx.HttpContext.RequestServices;
+        var dtoService = services.GetRequiredService<IDtoService>();
+        var libraryManager = services.GetRequiredService<ILibraryManager>();
+
+        var dtos = BuildResultDtos(pagedHits, dtoService, libraryManager);
 
         _logger.LogInformation(
             "TMDB search \"{Query}\" types=[{Types}] start={Start} limit={Limit} page={Page} total={Total}",
@@ -147,7 +157,10 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         });
     }
 
-    private List<BaseItemDto> BuildResultDtos(IReadOnlyList<TmdbSearchHit> hits)
+    private List<BaseItemDto> BuildResultDtos(
+        IReadOnlyList<TmdbSearchHit> hits,
+        IDtoService dtoService,
+        ILibraryManager libraryManager)
     {
         var options = new DtoOptions
         {
@@ -161,10 +174,10 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         {
             if (_libraryIndex.TryGetItemId(hit.Kind, hit.TmdbId, out var ownedId))
             {
-                var ownedItem = _libraryManager.GetItemById(ownedId);
+                var ownedItem = libraryManager.GetItemById(ownedId);
                 if (ownedItem is not null)
                 {
-                    dtos.Add(_dtoService.GetBaseItemDto(ownedItem, options));
+                    dtos.Add(dtoService.GetBaseItemDto(ownedItem, options));
                     continue;
                 }
             }
@@ -177,7 +190,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
             }
 
             var stubItem = CreateStubItem(hit);
-            var dto = _dtoService.GetBaseItemDto(stubItem, options);
+            var dto = dtoService.GetBaseItemDto(stubItem, options);
             dto.Id = StremioGuidHelper.ToGuid(stremioKind.Value, externalId);
             dtos.Add(dto);
 

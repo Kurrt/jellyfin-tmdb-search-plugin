@@ -28,7 +28,16 @@ namespace Jellyfin.Plugin.TmdbSearch;
 /// </remarks>
 public sealed class TmdbStubRegistry
 {
+    /// <summary>
+    /// Upper bound on retained stub mappings. Every unowned search result mints a stub, so an
+    /// unbounded map would grow for the lifetime of the server. Entries are tiny (a GUID plus
+    /// 8 bytes), so this cap costs well under a megabyte while comfortably covering the stubs
+    /// a user could still have open in a details page.
+    /// </summary>
+    private const int MaxEntries = 20_000;
+
     private readonly ConcurrentDictionary<Guid, (BaseItemKind Kind, int TmdbId)> _stubs = new();
+    private readonly ConcurrentQueue<Guid> _insertionOrder = new();
 
     /// <summary>
     /// Records that <paramref name="stubId"/> was minted for the given TMDB title.
@@ -38,7 +47,21 @@ public sealed class TmdbStubRegistry
     /// <param name="tmdbId">TMDB numeric id.</param>
     public void Register(Guid stubId, BaseItemKind kind, int tmdbId)
     {
-        _stubs[stubId] = (kind, tmdbId);
+        // Only queue genuinely new keys, so repeat searches for the same title don't inflate
+        // the eviction queue with duplicates.
+        if (_stubs.TryAdd(stubId, (kind, tmdbId)))
+        {
+            _insertionOrder.Enqueue(stubId);
+        }
+        else
+        {
+            _stubs[stubId] = (kind, tmdbId);
+        }
+
+        while (_stubs.Count > MaxEntries && _insertionOrder.TryDequeue(out var oldest))
+        {
+            _stubs.TryRemove(oldest, out _);
+        }
     }
 
     /// <summary>
