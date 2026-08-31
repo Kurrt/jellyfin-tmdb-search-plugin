@@ -15,6 +15,8 @@
         "checksum": "2774e332ed1a15bed1c9119c4d35317d",
         "timestamp": "2026-08-31T06:12:00Z"
       },
+      {
+        "version": "1.0.1.0",
         "changelog": "Fix slow search by removing per-result IMDb lookups; increase TMDB timeouts; add passthrough logging",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.1/jellyfin-plugin-tmdbsearch_1.0.1.0.zip",
