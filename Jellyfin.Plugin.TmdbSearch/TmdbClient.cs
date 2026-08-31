@@ -12,7 +12,7 @@ namespace Jellyfin.Plugin.TmdbSearch;
 /// </summary>
 public sealed class TmdbClient
 {
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(8);
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<TmdbClient> _logger;

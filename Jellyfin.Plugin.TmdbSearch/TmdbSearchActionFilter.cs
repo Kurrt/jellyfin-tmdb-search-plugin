@@ -57,8 +57,13 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     /// <inheritdoc />
     public async Task OnActionExecutionAsync(ActionExecutingContext ctx, ActionExecutionDelegate next)
     {
-        if (!ctx.IsApiSearchAction()
-            || !ctx.TryGetActionArgument("searchTerm", out string? searchTerm)
+        if (!ctx.IsApiSearchAction())
+        {
+            await next().ConfigureAwait(false);
+            return;
+        }
+
+        if (!ctx.TryGetActionArgument("searchTerm", out string? searchTerm)
             || string.IsNullOrWhiteSpace(searchTerm))
         {
             await next().ConfigureAwait(false);
@@ -75,6 +80,9 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         var requestedTypes = GetRequestedItemTypes(ctx);
         if (requestedTypes.Count == 0)
         {
+            _logger.LogDebug(
+                "TMDB search passthrough for \"{Query}\": no movie/series types requested",
+                searchTerm);
             await next().ConfigureAwait(false);
             return;
         }
@@ -82,6 +90,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         var plugin = Plugin.Instance;
         if (plugin is null)
         {
+            _logger.LogWarning("TMDB search passthrough for \"{Query}\": plugin instance unavailable", searchTerm);
             await next().ConfigureAwait(false);
             return;
         }
@@ -89,6 +98,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         var config = plugin.Configuration;
         if (string.IsNullOrWhiteSpace(config.TmdbApiKey))
         {
+            _logger.LogWarning("TMDB search passthrough for \"{Query}\": no API key configured", searchTerm);
             await next().ConfigureAwait(false);
             return;
         }
@@ -107,34 +117,33 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
 
         if (hits is null)
         {
+            _logger.LogWarning(
+                "TMDB search passthrough for \"{Query}\": TMDB request failed or timed out",
+                searchTerm);
             await next().ConfigureAwait(false);
             return;
         }
 
-        var dtos = await BuildResultDtosAsync(hits, config, ctx.HttpContext.RequestAborted)
-            .ConfigureAwait(false);
-
-        var paged = dtos.Skip(startIndex).Take(limit).ToArray();
+        var pagedHits = hits.Skip(startIndex).Take(limit).ToArray();
+        var dtos = BuildResultDtos(pagedHits);
 
         _logger.LogInformation(
-            "TMDB search \"{Query}\" types=[{Types}] start={Start} limit={Limit} results={Results}",
+            "TMDB search \"{Query}\" types=[{Types}] start={Start} limit={Limit} page={Page} total={Total}",
             searchTerm,
             string.Join(',', requestedTypes),
             startIndex,
             limit,
-            dtos.Count);
+            dtos.Count,
+            hits.Count);
 
         ctx.Result = new OkObjectResult(new QueryResult<BaseItemDto>
         {
-            Items = paged,
-            TotalRecordCount = dtos.Count,
+            Items = dtos,
+            TotalRecordCount = hits.Count,
         });
     }
 
-    private async Task<List<BaseItemDto>> BuildResultDtosAsync(
-        IReadOnlyList<TmdbSearchHit> hits,
-        PluginConfiguration config,
-        CancellationToken cancellationToken)
+    private List<BaseItemDto> BuildResultDtos(IReadOnlyList<TmdbSearchHit> hits)
     {
         var options = new DtoOptions
         {
@@ -156,12 +165,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
                 }
             }
 
-            string? imdbId = null;
-            imdbId = await _tmdbClient
-                .GetImdbIdAsync(hit.TmdbId, hit.Kind, config.TmdbApiKey, cancellationToken)
-                .ConfigureAwait(false);
-
-            var externalId = StremioGuidHelper.BuildExternalId(imdbId, hit.TmdbId);
+            var externalId = StremioGuidHelper.BuildExternalId(imdbId: null, hit.TmdbId);
             var stremioKind = StremioGuidHelper.ToStremioKind(hit.Kind);
             if (stremioKind is null)
             {
@@ -173,7 +177,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
             dto.Id = StremioGuidHelper.ToGuid(stremioKind.Value, externalId);
             dtos.Add(dto);
 
-            _gelatoBridge.SaveSearchMeta(dto.Id, stremioKind.Value, externalId, imdbId);
+            _gelatoBridge.SaveSearchMeta(dto.Id, stremioKind.Value, externalId, imdbId: null);
         }
 
         return dtos;

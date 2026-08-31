@@ -85,7 +85,7 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 |---------|-----|
 | Plugin not in catalog | Add the [repository URL](#from-the-jellyfin-plugin-catalog-recommended) under **Plugins → Repositories**, then check **Catalog** again |
 | Install fails checksum error | The manifest may be out of date with the release zip — use [manual install](#manual-install-release-zip) instead |
-| No TMDB results | Check API key on the plugin config page; confirm Jellyfin was restarted after install |
+| No TMDB results | Check API key on the plugin config page; confirm Jellyfin was restarted after install; check server logs for `TMDB search passthrough` |
 | Empty results for valid titles | TMDB may be unreachable; plugin falls back to native Jellyfin search |
 | Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs |
 | Want local/library-only search | Prefix query with `local:` (e.g. `local: matrix`) |
