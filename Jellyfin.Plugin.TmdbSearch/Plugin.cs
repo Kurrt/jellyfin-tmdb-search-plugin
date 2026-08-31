@@ -58,7 +58,9 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         [
             new PluginPageInfo
             {
-                Name = "config",
+                // Must be unique — Gelato also registers a page named "config", which causes
+                // /configurationpage?name=config to always load Gelato's settings instead.
+                Name = Name,
                 DisplayName = Name,
                 EnableInMainMenu = true,
                 EmbeddedResourcePath = string.Format(

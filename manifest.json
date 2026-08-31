@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.5.0",
+        "changelog": "Fix config page name collision with Gelato (both used name=config)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.5/jellyfin-plugin-tmdbsearch_1.0.5.0.zip",
+        "checksum": "24b940c12b3a6942cc33b786880853f3",
+        "timestamp": "2026-08-31T06:36:00Z"
+      },
+      {
         "version": "1.0.4.0",
         "changelog": "TMDB-only sidebar settings using standard Jellyfin plugin config save pattern",
         "targetAbi": "10.11.0.0",
