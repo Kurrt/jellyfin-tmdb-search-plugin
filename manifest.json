@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.6.0",
+        "changelog": "Fix TMDB search canceled when Jellyfin client aborts request; longer timeouts; partial results",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.6/jellyfin-plugin-tmdbsearch_1.0.6.0.zip",
+        "checksum": "c7220465fd94d9b4e1ff70ac1493a8a0",
+        "timestamp": "2026-08-31T06:42:00Z"
+      },
+      {
         "version": "1.0.5.0",
         "changelog": "Fix config page name collision with Gelato (both used name=config)",
         "targetAbi": "10.11.0.0",

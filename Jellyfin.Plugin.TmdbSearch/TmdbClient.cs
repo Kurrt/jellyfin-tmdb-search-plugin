@@ -12,7 +12,7 @@ namespace Jellyfin.Plugin.TmdbSearch;
 /// </summary>
 public sealed class TmdbClient
 {
-    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<TmdbClient> _logger;
@@ -64,12 +64,12 @@ public sealed class TmdbClient
 
             if (requestedKinds.Contains(BaseItemKind.Movie))
             {
-                tasks.Add(SearchMoviesAsync(query, config, language, cancellationToken));
+                tasks.Add(SearchMoviesSafeAsync(query, config, language, cancellationToken));
             }
 
             if (requestedKinds.Contains(BaseItemKind.Series))
             {
-                tasks.Add(SearchSeriesAsync(query, config, language, cancellationToken));
+                tasks.Add(SearchSeriesSafeAsync(query, config, language, cancellationToken));
             }
 
             var parts = await Task.WhenAll(tasks).ConfigureAwait(false);
@@ -77,6 +77,12 @@ public sealed class TmdbClient
                 .SelectMany(static hits => hits)
                 .OrderByDescending(static hit => hit.Popularity)
                 .ToList();
+
+            if (merged.Count == 0)
+            {
+                _logger.LogWarning("TMDB search returned no results for query {Query}", query);
+                return null;
+            }
 
             var ttl = TimeSpan.FromSeconds(Math.Max(config.CacheTtlSeconds, 0));
             _searchCache[cacheKey] = new CacheEntry<IReadOnlyList<TmdbSearchHit>>(merged, ttl);
@@ -86,6 +92,40 @@ public sealed class TmdbClient
         {
             _logger.LogWarning(ex, "TMDB search failed for query {Query}", query);
             return null;
+        }
+    }
+
+    private async Task<IReadOnlyList<TmdbSearchHit>> SearchMoviesSafeAsync(
+        string query,
+        PluginConfiguration config,
+        string language,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SearchMoviesAsync(query, config, language, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _logger.LogWarning(ex, "TMDB movie search failed for query {Query}", query);
+            return [];
+        }
+    }
+
+    private async Task<IReadOnlyList<TmdbSearchHit>> SearchSeriesSafeAsync(
+        string query,
+        PluginConfiguration config,
+        string language,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SearchSeriesAsync(query, config, language, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            _logger.LogWarning(ex, "TMDB series search failed for query {Query}", query);
+            return [];
         }
     }
 
@@ -176,11 +216,17 @@ public sealed class TmdbClient
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(RequestTimeout);
 
-        var response = await _httpClient
-            .GetFromJsonAsync<TmdbSearchResponse>(url, cts.Token)
+        using var response = await _httpClient
+            .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cts.Token)
             .ConfigureAwait(false);
 
-        return response ?? new TmdbSearchResponse();
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
+        var parsed = await JsonSerializer.DeserializeAsync<TmdbSearchResponse>(stream, cancellationToken: cts.Token)
+            .ConfigureAwait(false);
+
+        return parsed ?? new TmdbSearchResponse();
     }
 
     private static string BuildSearchUrl(

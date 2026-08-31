@@ -111,8 +111,9 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         }
 
         var language = ResolveLanguage(config);
+        using var searchTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var hits = await _tmdbClient
-            .SearchAsync(searchTerm, requestedTypes, config, language, ctx.HttpContext.RequestAborted)
+            .SearchAsync(searchTerm, requestedTypes, config, language, searchTimeout.Token)
             .ConfigureAwait(false);
 
         if (hits is null)

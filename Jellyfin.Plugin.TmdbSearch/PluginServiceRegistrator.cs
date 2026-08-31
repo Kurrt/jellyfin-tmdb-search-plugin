@@ -16,7 +16,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         services.AddHttpClient<TmdbClient>(client =>
         {
             client.BaseAddress = new Uri("https://api.themoviedb.org/");
-            client.Timeout = TimeSpan.FromSeconds(10);
+            client.Timeout = TimeSpan.FromSeconds(20);
             client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
         });
 
