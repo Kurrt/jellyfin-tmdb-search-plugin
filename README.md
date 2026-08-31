@@ -7,6 +7,9 @@ Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/
 - Intercepts movie/series search and queries TMDB directly (fast, Remux-style discovery).
 - If you already have the title in your library (matched by TMDB id), returns the real Jellyfin item.
 - If you do not, returns a TMDB result stub and seeds [Gelato](https://github.com/lostb1t/Gelato) so click-to-insert/playback still works.
+- Keeps that title's details page working even after Gelato materializes it under a new library
+  id mid-view — the stale stub id gets transparently redirected to the real item instead of
+  404ing until you search again.
 - Prefix a query with `local:` to use native Jellyfin search instead (music, people, or local-only lookup).
 
 ## Requirements
@@ -88,7 +91,7 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 | Install fails checksum error | The manifest may be out of date with the release zip — use [manual install](#manual-install-release-zip) instead |
 | No TMDB results | Check API key on the plugin config page; confirm Jellyfin was restarted after install; check server logs for `TMDB search passthrough` |
 | Empty results for valid titles | TMDB may be unreachable; plugin falls back to native Jellyfin search |
-| Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs |
+| Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs. If it only 404s *after* the title played fine once before, or after sitting on the details page for a while, this is the stub-id staleness case fixed in v1.1 — go back to search and click the result again, or upgrade if you're on an older version |
 | Want local/library-only search | Prefix query with `local:` (e.g. `local: matrix`) |
 
 ## Build and test

@@ -21,12 +21,15 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         });
 
         services.AddSingleton<TmdbLibraryIndex>();
+        services.AddSingleton<TmdbStubRegistry>();
         services.AddSingleton<GelatoMetaBridge>();
         services.AddSingleton<TmdbSearchActionFilter>();
+        services.AddSingleton<TmdbItemLookupActionFilter>();
         services.AddSingleton<IHostedService, TmdbLibraryIndexHostedService>();
 
         services.PostConfigure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
         {
+            options.Filters.AddService<TmdbItemLookupActionFilter>(order: -1);
             options.Filters.AddService<TmdbSearchActionFilter>(order: 0);
         });
     }

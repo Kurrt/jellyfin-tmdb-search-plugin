@@ -20,6 +20,16 @@ public static class ActionContextExtensions
         "GetItemsByUserIdLegacy",
     };
 
+    // Confirmed as the single action backing both `/Items/{itemId}` and the legacy
+    // `/Users/{userId}/Items/{itemId}` route on Jellyfin 10.11.x — Gelato's own
+    // InsertActionFilter guards this exact action name (verified against Gelato.dll).
+    // If a future Jellyfin version reintroduces a separate legacy singular-item action,
+    // add its name here alongside SearchActionNames' own Legacy entry.
+    private static readonly HashSet<string> ItemLookupActionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GetItemById",
+    };
+
     /// <summary>
     /// Gets the MVC action name for the current request.
     /// </summary>
@@ -35,6 +45,15 @@ public static class ActionContextExtensions
     /// <returns>True for search actions.</returns>
     public static bool IsApiSearchAction(this ActionExecutingContext ctx) =>
         ctx.GetActionName() is { } actionName && SearchActionNames.Contains(actionName);
+
+    /// <summary>
+    /// Returns true when the action is a single-item lookup endpoint
+    /// (<c>/Items/{itemId}</c> or <c>/Users/{userId}/Items/{itemId}</c>).
+    /// </summary>
+    /// <param name="ctx">The action executing context.</param>
+    /// <returns>True for single-item lookup actions.</returns>
+    public static bool IsApiItemLookupAction(this ActionExecutingContext ctx) =>
+        ctx.GetActionName() is { } actionName && ItemLookupActionNames.Contains(actionName);
 
     /// <summary>
     /// Tries to read a typed action argument from the model binder.
