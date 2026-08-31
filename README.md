@@ -17,7 +17,28 @@ Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/
 
 ## Install
 
-### From a release zip
+### From the Jellyfin plugin catalog (recommended)
+
+Add this repository once, then install from the catalog like any official plugin.
+
+**Repository URL:**
+
+```
+https://raw.githubusercontent.com/Kurrt/jellyfin-tmdb-search-plugin/main/manifest.json
+```
+
+1. Open **Dashboard → Plugins → Repositories**.
+2. Click **+** (Add).
+3. Enter any name (e.g. `TMDB Search`).
+4. Paste the repository URL above into **Repository URL**.
+5. Click **Save**.
+6. Open **Dashboard → Plugins → Catalog**.
+7. Find **TMDB Search** and click **Install**.
+8. Restart Jellyfin.
+
+Future updates appear in the catalog automatically after you refresh repositories.
+
+### Manual install (release zip)
 
 1. Download the latest `jellyfin-plugin-tmdbsearch_*.zip` from [Releases](https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases).
 2. Extract into your Jellyfin plugins folder:
@@ -62,6 +83,8 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 
 | Symptom | Fix |
 |---------|-----|
+| Plugin not in catalog | Add the [repository URL](#from-the-jellyfin-plugin-catalog-recommended) under **Plugins → Repositories**, then check **Catalog** again |
+| Install fails checksum error | The manifest may be out of date with the release zip — use [manual install](#manual-install-release-zip) instead |
 | No TMDB results | Check API key on the plugin config page; confirm Jellyfin was restarted after install |
 | Empty results for valid titles | TMDB may be unreachable; plugin falls back to native Jellyfin search |
 | Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs |
@@ -73,6 +96,22 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 dotnet build
 dotnet test
 ```
+
+### Releasing
+
+1. Bump `Version` in `Jellyfin.Plugin.TmdbSearch.csproj`.
+2. Build and package:
+
+   ```bash
+   dotnet build -c Release
+   zip -j dist/jellyfin-plugin-tmdbsearch_<version>.zip \
+     Jellyfin.Plugin.TmdbSearch/bin/Release/net9.0/Jellyfin.Plugin.TmdbSearch.dll
+   md5 dist/jellyfin-plugin-tmdbsearch_<version>.zip
+   ```
+
+3. Create a GitHub release and upload the zip.
+4. Add a new entry to `manifest.json` (`version`, `sourceUrl`, `checksum`, `timestamp`, `changelog`).
+5. Push `manifest.json` to `main` so catalog installs pick up the update.
 
 ## License
 

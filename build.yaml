@@ -3,7 +3,7 @@ name: "jellyfin-plugin-tmdbsearch"
 guid: "a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b"
 version: "1"
 targetAbi: "10.11.0.0"
-owner: "kurtinvernon"
+owner: "Kurrt"
 overview: "Replace Jellyfin search with TMDB"
 description: >
   Replaces library Items search with direct TMDB lookup for movies and series.
