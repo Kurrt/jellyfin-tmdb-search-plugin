@@ -26,7 +26,7 @@ public sealed class SearchResultDtoBuilderTests
             "An insomniac office worker...",
             91.2);
 
-        var stub = SearchResultDtoBuilder.CreateStub(hit);
+        var stub = SearchResultDtoBuilder.CreateStub(hit, "jellyfin-server-id");
 
         var expectedId = StremioGuidHelper.ToGuid(StremioMediaKind.Movie, "tmdb:550");
         Assert.Equal(expectedId, stub.Dto.Id);
@@ -36,6 +36,7 @@ public sealed class SearchResultDtoBuilderTests
         Assert.Equal(BaseItemKind.Movie, stub.Dto.Type);
         Assert.Equal(MediaType.Video, stub.Dto.MediaType);
         Assert.Equal("550", stub.Dto.ProviderIds[MetadataProvider.Tmdb.ToString()]);
+        Assert.Equal("jellyfin-server-id", stub.Dto.ServerId);
         Assert.Contains(ImageType.Primary, stub.Dto.ImageTags.Keys);
         Assert.Equal("https://image.tmdb.org/t/p/w780/p.jpg", stub.Gelato.PosterUrl);
         Assert.Equal("tmdb:550", stub.Gelato.ExternalId);
@@ -52,7 +53,7 @@ public sealed class SearchResultDtoBuilderTests
     public void CreateStub_IncludesLocalMediaSourceStub()
     {
         var hit = new TmdbSearchHit(603, BaseItemKind.Movie, "The Matrix", 1999, null, null, 1);
-        var stub = SearchResultDtoBuilder.CreateStub(hit);
+        var stub = SearchResultDtoBuilder.CreateStub(hit, "jellyfin-server-id");
 
         var source = Assert.Single(stub.Dto.MediaSources);
         Assert.Equal("/stub", source.Path);
@@ -69,10 +70,23 @@ public sealed class SearchResultDtoBuilderTests
     public void CreateStub_SeriesGuidDiffersFromMovie()
     {
         var hit = new TmdbSearchHit(1399, BaseItemKind.Series, "Game of Thrones", 2011, null, "Westeros", 1);
-        var stub = SearchResultDtoBuilder.CreateStub(hit);
+        var stub = SearchResultDtoBuilder.CreateStub(hit, "jellyfin-server-id");
 
         Assert.Equal(StremioGuidHelper.ToGuid(StremioMediaKind.Series, "tmdb:1399"), stub.Dto.Id);
         Assert.Equal(BaseItemKind.Series, stub.Dto.Type);
         Assert.Equal(StremioMediaKind.Series, stub.Gelato.Kind);
+    }
+
+    /// <summary>
+    /// Verifies posters are omitted when ServerId is missing so clients do not call getScaledImageUrl on a null ApiClient.
+    /// </summary>
+    [Fact]
+    public void CreateStub_OmitsImageTagsWithoutServerId()
+    {
+        var hit = new TmdbSearchHit(550, BaseItemKind.Movie, "Fight Club", 1999, "/p.jpg", null, 1);
+        var stub = SearchResultDtoBuilder.CreateStub(hit, serverId: null);
+
+        Assert.Null(stub.Dto.ServerId);
+        Assert.True(stub.Dto.ImageTags is null || stub.Dto.ImageTags.Count == 0);
     }
 }

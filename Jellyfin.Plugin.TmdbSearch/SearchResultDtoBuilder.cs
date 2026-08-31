@@ -39,9 +39,10 @@ public static class SearchResultDtoBuilder
     /// Creates a Gelato-compatible search stub for an unowned TMDB hit.
     /// </summary>
     /// <param name="hit">Normalized TMDB search hit.</param>
+    /// <param name="serverId">Jellyfin server id required by clients to resolve image URLs.</param>
     /// <returns>The DTO and Gelato seed.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when the hit is not a movie or series.</exception>
-    public static SearchStubResult CreateStub(TmdbSearchHit hit)
+    public static SearchStubResult CreateStub(TmdbSearchHit hit, string? serverId)
     {
         if (StremioGuidHelper.ToStremioKind(hit.Kind) is not { } stremioKind)
         {
@@ -54,10 +55,12 @@ public static class SearchResultDtoBuilder
         var externalId = StremioGuidHelper.BuildExternalId(imdbId: null, hit.TmdbId);
         var guid = StremioGuidHelper.ToGuid(stremioKind, externalId);
         var posterUrl = TmdbSearchMapper.ToPosterUrl(hit.PosterPath);
+        var resolvedServerId = string.IsNullOrWhiteSpace(serverId) ? null : serverId;
 
         var dto = new BaseItemDto
         {
             Id = guid,
+            ServerId = resolvedServerId,
             Name = hit.Title,
             Overview = hit.Overview,
             ProductionYear = hit.Year,
@@ -66,10 +69,12 @@ public static class SearchResultDtoBuilder
                 : null,
             Type = hit.Kind,
             MediaType = MediaType.Video,
+            IsFolder = hit.Kind == BaseItemKind.Series,
             ProviderIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 [MetadataProvider.Tmdb.ToString()] = hit.TmdbId.ToString(CultureInfo.InvariantCulture),
             },
+            ImageBlurHashes = new Dictionary<ImageType, Dictionary<string, string>>(),
             MediaSources =
             [
                 new MediaSourceInfo
@@ -84,7 +89,7 @@ public static class SearchResultDtoBuilder
             ],
         };
 
-        if (posterUrl is not null)
+        if (posterUrl is not null && resolvedServerId is not null)
         {
             dto.ImageTags = new Dictionary<ImageType, string>
             {

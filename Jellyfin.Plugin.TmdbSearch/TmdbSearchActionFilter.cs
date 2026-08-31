@@ -1,5 +1,6 @@
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.TmdbSearch.Configuration;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Library;
@@ -22,6 +23,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     private readonly IDtoService _dtoService;
     private readonly ILibraryManager _libraryManager;
     private readonly IServerConfigurationManager _serverConfigurationManager;
+    private readonly IServerApplicationHost _applicationHost;
     private readonly ILogger<TmdbSearchActionFilter> _logger;
 
     /// <summary>
@@ -34,6 +36,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         IDtoService dtoService,
         ILibraryManager libraryManager,
         IServerConfigurationManager serverConfigurationManager,
+        IServerApplicationHost applicationHost,
         ILogger<TmdbSearchActionFilter> logger)
     {
         _tmdbClient = tmdbClient;
@@ -42,6 +45,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         _dtoService = dtoService;
         _libraryManager = libraryManager;
         _serverConfigurationManager = serverConfigurationManager;
+        _applicationHost = applicationHost;
         _logger = logger;
     }
 
@@ -163,7 +167,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
                 }
             }
 
-            var stub = SearchResultDtoBuilder.CreateStub(hit);
+            var stub = SearchResultDtoBuilder.CreateStub(hit, _applicationHost.SystemId);
             dtos.Add(stub.Dto);
             _gelatoBridge.SaveSearchMeta(
                 stub.Gelato.Guid,
