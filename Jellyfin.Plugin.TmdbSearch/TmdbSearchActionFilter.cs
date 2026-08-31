@@ -24,6 +24,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
 
     private readonly TmdbClient _tmdbClient;
     private readonly TmdbLibraryIndex _libraryIndex;
+    private readonly TmdbStubRegistry _stubRegistry;
     private readonly GelatoMetaBridge _gelatoBridge;
     private readonly IDtoService _dtoService;
     private readonly ILibraryManager _libraryManager;
@@ -36,6 +37,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     public TmdbSearchActionFilter(
         TmdbClient tmdbClient,
         TmdbLibraryIndex libraryIndex,
+        TmdbStubRegistry stubRegistry,
         GelatoMetaBridge gelatoBridge,
         IDtoService dtoService,
         ILibraryManager libraryManager,
@@ -44,6 +46,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     {
         _tmdbClient = tmdbClient;
         _libraryIndex = libraryIndex;
+        _stubRegistry = stubRegistry;
         _gelatoBridge = gelatoBridge;
         _dtoService = dtoService;
         _libraryManager = libraryManager;
@@ -178,6 +181,11 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
             dto.Id = StremioGuidHelper.ToGuid(stremioKind.Value, externalId);
             dtos.Add(dto);
 
+            // Remember stub -> TMDB id (keyed by BaseItemKind, same as TmdbLibraryIndex) so
+            // TmdbItemLookupActionFilter can redirect this exact GUID to the real library item
+            // once Gelato materializes it, even if the client never searches again (e.g. it's
+            // just sitting on the details page).
+            _stubRegistry.Register(dto.Id, hit.Kind, hit.TmdbId);
             _gelatoBridge.SaveSearchMeta(dto.Id, stremioKind.Value, externalId, imdbId: null);
         }
 
