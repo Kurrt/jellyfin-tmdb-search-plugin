@@ -12,6 +12,7 @@
     var READY_CLASS = 'tmdbsearch-streams-ready';
     var SPINNER_CLASS = 'tmdbsearch-sources-loading';
     var EMPTY_CLASS = 'tmdbsearch-no-streams';
+    var PAGE_SPINNER_CLASS = 'tmdbsearch-hide-docspinner';
     var PATCH_FLAG = '_tmdbsearchGetItemPatched';
     var ORIGINAL_FLAG = '_tmdbsearchOriginalGetItem';
     var videoNavCount = 0;
@@ -37,6 +38,13 @@
             '  opacity: 1;',
             '  pointer-events: auto;',
             '  cursor: pointer;',
+            '}',
+            'html.' + PAGE_SPINNER_CLASS + ' .docspinner,',
+            'html.' + PAGE_SPINNER_CLASS + ' .docspinner-overlay {',
+            '  display: none !important;',
+            '  visibility: hidden !important;',
+            '  opacity: 0 !important;',
+            '  pointer-events: none !important;',
             '}'
         ].join('\n');
 
@@ -221,6 +229,30 @@
         msg.textContent = 'No streams available';
         form.insertBefore(msg, form.firstChild);
         form.classList.remove('hide');
+    }
+
+    /**
+     * Hides jellyfin-web's page-level ajax spinner once TMDB metadata is on screen.
+     * Stream request timeouts belong to AIOStreams/Gelato; this only unblocks the page.
+     */
+    function hidePageSpinner() {
+        if (document.documentElement) {
+            document.documentElement.classList.add(PAGE_SPINNER_CLASS);
+        }
+
+        var loading = window.loading;
+        if (loading && typeof loading.hide === 'function') {
+            loading.hide();
+        }
+    }
+
+    /**
+     * Allows jellyfin-web to show the page spinner again on later requests.
+     */
+    function restorePageSpinner() {
+        if (document.documentElement) {
+            document.documentElement.classList.remove(PAGE_SPINNER_CLASS);
+        }
     }
 
     /**
@@ -608,27 +640,33 @@
         proto.getItem = function (userId, itemId) {
             var self = this;
             var original = proto[ORIGINAL_FLAG];
+            restorePageSpinner();
             if (typeof itemId !== 'string' || !isCurrentPage(itemId)) {
                 return original.call(self, userId, itemId);
             }
 
-            var streamsRequest = original.call(self, userId, itemId);
+            var streamsRequest = Promise.resolve(original.call(self, userId, itemId)).catch(function () {
+                return null;
+            });
             var metaUrl = self.getUrl('TmdbSearch/Items/' + itemId + '/Metadata');
             return self.getJSON(metaUrl).then(function (meta) {
                 if (!isCurrentPage(itemId)) {
                     return meta;
                 }
 
+                hidePageSpinner();
+                Promise.resolve(streamsRequest).then(restorePageSpinner, restorePageSpinner);
+
                 var type = meta && meta.Type;
-                if (type !== 'Movie' && type !== 'Episode') {
-                    return streamsRequest;
+                if (type === 'Movie' || type === 'Episode') {
+                    if (!hasPlayableSources(meta)) {
+                        meta.MediaSources = [];
+                    }
+
+                    loadStreamsIntoItem(meta, streamsRequest, itemId);
+                    return meta;
                 }
 
-                if (!hasPlayableSources(meta)) {
-                    meta.MediaSources = [];
-                }
-
-                loadStreamsIntoItem(meta, streamsRequest, itemId);
                 return meta;
             }, function () {
                 return streamsRequest;

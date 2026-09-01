@@ -71,4 +71,42 @@ public static class StremioGuidHelper
         var hash = MD5.HashData(Encoding.UTF8.GetBytes(uri));
         return new Guid(hash);
     }
+
+    /// <summary>
+    /// Builds the Stremio external id for a season: tmdb:{id}:{season}.
+    /// </summary>
+    /// <param name="tmdbId">TMDB series id.</param>
+    /// <param name="seasonNumber">Season number.</param>
+    /// <returns>The external id segment.</returns>
+    public static string BuildSeasonExternalId(int tmdbId, int seasonNumber) =>
+        $"{BuildExternalId(imdbId: null, tmdbId)}:{seasonNumber}";
+
+    /// <summary>
+    /// Builds the Stremio external id for an episode: tmdb:{id}:{season}:{episode}.
+    /// </summary>
+    /// <param name="tmdbId">TMDB series id.</param>
+    /// <param name="seasonNumber">Season number.</param>
+    /// <param name="episodeNumber">Episode number.</param>
+    /// <returns>The external id segment.</returns>
+    public static string BuildEpisodeExternalId(int tmdbId, int seasonNumber, int episodeNumber) =>
+        $"{BuildExternalId(imdbId: null, tmdbId)}:{seasonNumber}:{episodeNumber}";
+
+    /// <summary>
+    /// Computes the deterministic GUID for a TMDB season stub.
+    /// </summary>
+    /// <param name="tmdbId">TMDB series id.</param>
+    /// <param name="seasonNumber">Season number.</param>
+    /// <returns>A stable GUID in Gelato's series namespace.</returns>
+    public static Guid ForSeason(int tmdbId, int seasonNumber) =>
+        ToGuid(StremioMediaKind.Series, BuildSeasonExternalId(tmdbId, seasonNumber));
+
+    /// <summary>
+    /// Computes the deterministic GUID for a TMDB episode stub.
+    /// </summary>
+    /// <param name="tmdbId">TMDB series id.</param>
+    /// <param name="seasonNumber">Season number.</param>
+    /// <param name="episodeNumber">Episode number.</param>
+    /// <returns>A stable GUID compatible with Gelato episode URIs.</returns>
+    public static Guid ForEpisode(int tmdbId, int seasonNumber, int episodeNumber) =>
+        ToGuid(StremioMediaKind.Series, BuildEpisodeExternalId(tmdbId, seasonNumber, episodeNumber));
 }

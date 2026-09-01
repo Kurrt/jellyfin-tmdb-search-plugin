@@ -76,4 +76,21 @@ public class StremioGuidHelperTests
         Assert.Equal(StremioMediaKind.Series, StremioGuidHelper.ToStremioKind(BaseItemKind.Series));
         Assert.Null(StremioGuidHelper.ToStremioKind(BaseItemKind.Audio));
     }
+
+    /// <summary>
+    /// Verifies season URIs differ from the series GUID and match Gelato's series namespace.
+    /// </summary>
+    [Fact]
+    public void ForSeason_DiffersFromSeriesAndEpisode()
+    {
+        var series = StremioGuidHelper.ToGuid(StremioMediaKind.Series, "tmdb:1399");
+        var season = StremioGuidHelper.ForSeason(1399, 1);
+        var episode = StremioGuidHelper.ForEpisode(1399, 1, 1);
+
+        Assert.Equal(StremioGuidHelper.ToGuid(StremioMediaKind.Series, "tmdb:1399:1"), season);
+        Assert.Equal(StremioGuidHelper.ToGuid(StremioMediaKind.Series, "tmdb:1399:1:1"), episode);
+        Assert.NotEqual(series, season);
+        Assert.NotEqual(season, episode);
+        Assert.NotEqual(series, episode);
+    }
 }

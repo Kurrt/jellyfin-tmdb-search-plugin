@@ -26,6 +26,7 @@ public sealed class TmdbClient
     private readonly ILogger<TmdbClient> _logger;
     private readonly ConcurrentDictionary<string, CacheEntry<IReadOnlyList<TmdbSearchHit>>> _searchCache = new();
     private readonly ConcurrentDictionary<string, CacheEntry<TmdbTitleDetails>> _detailsCache = new();
+    private readonly ConcurrentDictionary<string, CacheEntry<IReadOnlyList<TmdbEpisodeInfo>>> _seasonCache = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TmdbClient"/> class.
@@ -170,6 +171,54 @@ public sealed class TmdbClient
         }
     }
 
+    /// <summary>
+    /// Loads TMDB episodes for one season. Failures return an empty list.
+    /// </summary>
+    /// <param name="tmdbId">TMDB series id.</param>
+    /// <param name="seasonNumber">Season number.</param>
+    /// <param name="config">Plugin configuration.</param>
+    /// <param name="language">Resolved TMDB language code.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Mapped episodes, or empty when TMDB is unavailable.</returns>
+    public async Task<IReadOnlyList<TmdbEpisodeInfo>> GetSeasonEpisodesAsync(
+        int tmdbId,
+        int seasonNumber,
+        PluginConfiguration config,
+        string language,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(config.TmdbApiKey) || tmdbId <= 0 || seasonNumber < 0)
+        {
+            return [];
+        }
+
+        var cacheKey = $"{language}|tv|{tmdbId}|season|{seasonNumber}";
+        if (_seasonCache.TryGetValue(cacheKey, out var cached) && !cached.IsExpired)
+        {
+            return cached.Value;
+        }
+
+        try
+        {
+            var url =
+                $"3/tv/{tmdbId}/season/{seasonNumber}?api_key={Uri.EscapeDataString(config.TmdbApiKey)}&language={Uri.EscapeDataString(language)}";
+            var parsed = await GetJsonAsync<TmdbSeasonEpisodesResponse>(url, cancellationToken).ConfigureAwait(false);
+            var episodes = parsed is null ? [] : MapEpisodes(parsed);
+            var ttl = TimeSpan.FromSeconds(Math.Max(config.CacheTtlSeconds, 0));
+            _seasonCache[cacheKey] = new CacheEntry<IReadOnlyList<TmdbEpisodeInfo>>(episodes, ttl);
+            return episodes;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "TMDB season {Season} failed for series {TmdbId}", seasonNumber, tmdbId);
+            return [];
+        }
+    }
+
     private async Task<bool> TryAddSearchPartAsync(
         List<IReadOnlyList<TmdbSearchHit>> parts,
         Func<Task<IReadOnlyList<TmdbSearchHit>>> search,
@@ -281,12 +330,7 @@ public sealed class TmdbClient
         }
 
         var date = kind == BaseItemKind.Series ? row.FirstAirDate : row.ReleaseDate;
-        DateTime? premiere = null;
-        if (!string.IsNullOrWhiteSpace(date)
-            && DateTime.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedDate))
-        {
-            premiere = parsedDate;
-        }
+        var premiere = ParseDate(date);
 
         var runtime = kind == BaseItemKind.Series
             ? row.EpisodeRunTime.FirstOrDefault(static minutes => minutes > 0)
@@ -333,7 +377,83 @@ public sealed class TmdbClient
             row.Tagline,
             NamesOf(row.Genres),
             people,
-            NamesOf(row.ProductionCompanies));
+            NamesOf(row.ProductionCompanies),
+            MapSeasons(row.Seasons));
+    }
+
+    private static IReadOnlyList<TmdbSeasonInfo> MapSeasons(IEnumerable<TmdbSeasonRow> rows)
+    {
+        var seasons = new List<TmdbSeasonInfo>();
+        foreach (var row in rows.OrderBy(static season => season.SeasonNumber))
+        {
+            if (row.SeasonNumber < 0 || (row.SeasonNumber == 0 && row.EpisodeCount <= 0))
+            {
+                continue;
+            }
+
+            var name = string.IsNullOrWhiteSpace(row.Name)
+                ? $"Season {row.SeasonNumber}"
+                : row.Name.Trim();
+            seasons.Add(new TmdbSeasonInfo(
+                row.SeasonNumber,
+                name,
+                string.IsNullOrWhiteSpace(row.Overview) ? null : row.Overview.Trim(),
+                row.EpisodeCount,
+                ParseDate(row.AirDate),
+                row.PosterPath));
+        }
+
+        return seasons;
+    }
+
+    private static IReadOnlyList<TmdbEpisodeInfo> MapEpisodes(TmdbSeasonEpisodesResponse response)
+    {
+        var episodes = new List<TmdbEpisodeInfo>(response.Episodes.Count);
+        foreach (var row in response.Episodes.OrderBy(static episode => episode.EpisodeNumber))
+        {
+            if (row.EpisodeNumber <= 0)
+            {
+                continue;
+            }
+
+            var name = FirstNonEmpty(row.Name, $"Episode {row.EpisodeNumber}");
+            if (name is null)
+            {
+                continue;
+            }
+
+            var runtime = row.Runtime is > 0 ? row.Runtime : null;
+            episodes.Add(new TmdbEpisodeInfo(
+                row.EpisodeNumber,
+                name,
+                string.IsNullOrWhiteSpace(row.Overview) ? null : row.Overview.Trim(),
+                ParseDate(row.AirDate),
+                row.StillPath,
+                runtime,
+                row.VoteAverage > 0 ? (float)row.VoteAverage : null,
+                row.Id > 0 ? row.Id : null));
+        }
+
+        return episodes;
+    }
+
+    private static DateTime? ParseDate(string? date)
+    {
+        if (string.IsNullOrWhiteSpace(date))
+        {
+            return null;
+        }
+
+        if (DateTime.TryParse(
+            date,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var parsedDate))
+        {
+            return parsedDate;
+        }
+
+        return null;
     }
 
     private static IReadOnlyList<string> NamesOf(IEnumerable<TmdbNamedRow> rows)
