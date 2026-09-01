@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -60,7 +61,8 @@ public sealed class TmdbImageResourceFilter : IAsyncResourceFilter, IOrderedFilt
         ResourceExecutionDelegate next)
     {
         if (ctx.ActionDescriptor is not ControllerActionDescriptor descriptor
-            || !IsItemImageAction(descriptor.ActionName))
+            || !IsItemImageAction(descriptor.ActionName)
+            || !PluginSettings.Current.EnableTmdbPosterProxy)
         {
             await next().ConfigureAwait(false);
             return;

@@ -266,10 +266,29 @@
     }
 
     /**
+     * Reads a live feature flag. Missing flags default on so older injected scripts keep working.
+     *
+     * @param {string} name CamelCase client flag, e.g. immediateTmdbMetadata.
+     * @returns {boolean} False only when the flag is explicitly false.
+     */
+    function featureEnabled(name) {
+        var flags = window.__tmdbsearchFeatures;
+        if (!flags || typeof flags !== 'object') {
+            return true;
+        }
+
+        return flags[name] !== false;
+    }
+
+    /**
      * Hides jellyfin-web's page-level spinner once TMDB metadata is on screen.
      * Stream request timeouts belong to AIOStreams/Gelato; this only unblocks the page.
      */
     function hidePageSpinner() {
+        if (!featureEnabled('hidePageSpinner')) {
+            return;
+        }
+
         patchLoadingShow();
         if (document.documentElement) {
             document.documentElement.classList.add(PAGE_SPINNER_CLASS);
@@ -342,7 +361,9 @@
 
         container.classList.add(PENDING_CLASS);
         container.classList.remove(READY_CLASS);
-        revealPlayButton(false);
+        if (featureEnabled('showPlayBeforeStreams')) {
+            revealPlayButton(false);
+        }
     }
 
     /**
@@ -652,7 +673,7 @@
 
         streamsRequest.then(function (full) {
             if (!isCurrentPage(itemId) || !hasPlayableSources(full)) {
-                if (isCurrentPage(itemId)) {
+                if (isCurrentPage(itemId) && featureEnabled('noStreamsOnError')) {
                     var emptyPage = getDetailsPage();
                     if (emptyPage) {
                         showNoStreams(emptyPage);
@@ -690,7 +711,7 @@
                 }
             }());
         }).catch(function () {
-            if (!isCurrentPage(itemId)) {
+            if (!isCurrentPage(itemId) || !featureEnabled('noStreamsOnError')) {
                 return;
             }
 
@@ -719,13 +740,17 @@
             var self = this;
             var original = proto[ORIGINAL_FLAG];
             restorePageSpinnerIfLeftItem();
-            if (typeof itemId !== 'string' || !isCurrentPage(itemId)) {
+            if (!featureEnabled('immediateTmdbMetadata')
+                || typeof itemId !== 'string'
+                || !isCurrentPage(itemId)) {
                 return original.call(self, userId, itemId);
             }
 
-            var streamsRequest = Promise.resolve(original.call(self, userId, itemId)).catch(function () {
-                return null;
-            });
+            var streamsRequest = featureEnabled('backgroundStreamLoading')
+                ? Promise.resolve(original.call(self, userId, itemId)).catch(function () {
+                    return null;
+                })
+                : null;
             var metaUrl = self.getUrl('TmdbSearch/Items/' + itemId + '/Metadata');
             return self.getJSON(metaUrl).then(function (meta) {
                 if (!isCurrentPage(itemId)) {
@@ -741,14 +766,36 @@
                         meta.MediaSources = [];
                     }
 
-                    loadStreamsIntoItem(meta, streamsRequest, itemId);
+                    if (streamsRequest) {
+                        loadStreamsIntoItem(meta, streamsRequest, itemId);
+                    } else if (featureEnabled('showPlayBeforeStreams')) {
+                        markPlayPending();
+                    }
+
                     return meta;
                 }
 
-                revealPlayButton(true);
-                return meta;
+                if (featureEnabled('immediateSeriesMetadata')) {
+                    if (featureEnabled('showPlayBeforeStreams')) {
+                        revealPlayButton(true);
+                    }
+
+                    return meta;
+                }
+
+                if (streamsRequest) {
+                    return streamsRequest.then(function (full) {
+                        return full || meta;
+                    });
+                }
+
+                return original.call(self, userId, itemId);
             }, function () {
-                return streamsRequest;
+                if (streamsRequest) {
+                    return streamsRequest;
+                }
+
+                return original.call(self, userId, itemId);
             });
         };
     }

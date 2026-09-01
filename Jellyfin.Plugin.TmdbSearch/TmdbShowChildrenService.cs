@@ -66,7 +66,9 @@ public sealed class TmdbShowChildrenService
 
     private IActionResult? TryCreateNextUp(Guid seriesId)
     {
-        if (!_stubCache.TryGetDto(seriesId, out var series) || series.Type != BaseItemKind.Series)
+        if (!PluginSettings.Current.EnableEmptyNextUpForStubs
+            || !_stubCache.TryGetDto(seriesId, out var series)
+            || series.Type != BaseItemKind.Series)
         {
             return null;
         }
@@ -76,7 +78,9 @@ public sealed class TmdbShowChildrenService
 
     private async Task<IActionResult?> TryCreateSeasonsAsync(Guid seriesId, CancellationToken cancellationToken)
     {
-        if (!_stubCache.TryGetDto(seriesId, out var series) || series.Type != BaseItemKind.Series)
+        if (!PluginSettings.Current.EnableTmdbSeasons
+            || !_stubCache.TryGetDto(seriesId, out var series)
+            || series.Type != BaseItemKind.Series)
         {
             return null;
         }
@@ -90,7 +94,9 @@ public sealed class TmdbShowChildrenService
         Guid? seasonId,
         CancellationToken cancellationToken)
     {
-        if (!_stubCache.TryGetDto(seriesId, out var series) || series.Type != BaseItemKind.Series)
+        if (!PluginSettings.Current.EnableTmdbEpisodes
+            || !_stubCache.TryGetDto(seriesId, out var series)
+            || series.Type != BaseItemKind.Series)
         {
             return null;
         }

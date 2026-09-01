@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 
 namespace Jellyfin.Plugin.TmdbSearch.Web;
 
@@ -56,14 +57,25 @@ public static class WebInjection
     }
 
     /// <summary>
+    /// Combines live feature flags with the embedded loader script.
+    /// </summary>
+    /// <param name="config">Plugin configuration, or <see cref="PluginSettings.Current"/> when omitted.</param>
+    /// <returns>JavaScript that assigns <c>window.__tmdbsearchFeatures</c> then patches getItem.</returns>
+    public static string BuildClientScript(PluginConfiguration? config = null)
+    {
+        var resolved = config ?? PluginSettings.Current;
+        return $"{TmdbSearchClientFeatures.BuildPreamble(resolved)}\n{ReadAsyncStreamLoaderScript()}";
+    }
+
+    /// <summary>
     /// File Transformation callback. Injects the loader into index.html when enabled.
     /// </summary>
     /// <param name="payload">Transformation payload whose Contents field holds HTML.</param>
     /// <returns>The HTML to serve.</returns>
     public static string TransformIndexHtml(object payload)
     {
-        var enabled = Plugin.Instance?.Configuration.EnableAsyncStreamUi ?? true;
-        return ApplyTransformation(payload, enabled);
+        var config = PluginSettings.Current;
+        return ApplyTransformation(payload, config.EnableAsyncStreamUi, config);
     }
 
     /// <summary>
@@ -71,8 +83,9 @@ public static class WebInjection
     /// </summary>
     /// <param name="payload">Transformation payload whose Contents field holds HTML.</param>
     /// <param name="enabled">True to inject the loader; false to strip it.</param>
+    /// <param name="config">Feature flags to prepend, or current settings when omitted.</param>
     /// <returns>The HTML to serve.</returns>
-    public static string ApplyTransformation(object payload, bool enabled)
+    public static string ApplyTransformation(object payload, bool enabled, PluginConfiguration? config = null)
     {
         var html = ReadContents(payload) ?? string.Empty;
         if (!enabled)
@@ -80,7 +93,7 @@ public static class WebInjection
             return StripInjectedScript(html);
         }
 
-        return InjectScript(html, ReadAsyncStreamLoaderScript());
+        return InjectScript(html, BuildClientScript(config));
     }
 
     /// <summary>

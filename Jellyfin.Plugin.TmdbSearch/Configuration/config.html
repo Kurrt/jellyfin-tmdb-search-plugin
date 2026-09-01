@@ -38,12 +38,133 @@
                         <div class="fieldDescription">How long identical search queries are cached in memory (default 600).</div>
                     </div>
 
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Search</h2>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableTmdbLibrarySearch" name="EnableTmdbLibrarySearch" type="checkbox" is="emby-checkbox" />
+                            <span>Replace library search with TMDB</span>
+                        </label>
+                        <div class="fieldDescription">Intercept movie and series Items search and query TMDB instead of the local library. Prefix a query with local: to use native Jellyfin search.</div>
+                    </div>
+
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Jellyfin-web item details</h2>
+                    </div>
+                    <p class="fieldDescription">These patches run in the web client. They need File Transformation or JavaScript Injector, and the inject toggle below must stay on. Native apps are not patched.</p>
+
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label>
                             <input id="EnableAsyncStreamUi" name="EnableAsyncStreamUi" type="checkbox" is="emby-checkbox" />
-                            <span>Load streams asynchronously on item details</span>
+                            <span>Inject the details-page script</span>
                         </label>
-                        <div class="fieldDescription">Show poster and metadata from TMDB immediately, with a spinner in the version panel while Gelato streams load. Requires the File Transformation or JavaScript Injector plugin.</div>
+                        <div class="fieldDescription">Install the TMDB Search script into jellyfin-web index.html. Turn this off to remove every web-client patch below.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableImmediateTmdbMetadata" name="EnableImmediateTmdbMetadata" type="checkbox" is="emby-checkbox" />
+                            <span>Show TMDB metadata immediately</span>
+                        </label>
+                        <div class="fieldDescription">Fetch /TmdbSearch/Items/{id}/Metadata and paint poster, overview, and other TMDB fields before Gelato GetItem finishes. Other details-page toggles require this.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableBackgroundStreamLoading" name="EnableBackgroundStreamLoading" type="checkbox" is="emby-checkbox" />
+                            <span>Load streams in the background</span>
+                        </label>
+                        <div class="fieldDescription">Keep the original GetItem request running so Gelato/AIOStreams can fill the version panel after metadata is shown. Turn off for a metadata-only preview with no playback for unowned titles.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableHidePageSpinner" name="EnableHidePageSpinner" type="checkbox" is="emby-checkbox" />
+                            <span>Hide the page spinner after metadata appears</span>
+                        </label>
+                        <div class="fieldDescription">Suppress jellyfin-web Loading.show and the full-page blue spinner once TMDB metadata is on screen. Stream timeouts still belong to AIOStreams/Gelato.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableShowPlayBeforeStreams" name="EnableShowPlayBeforeStreams" type="checkbox" is="emby-checkbox" />
+                            <span>Show Play immediately (disabled until streams exist)</span>
+                        </label>
+                        <div class="fieldDescription">Un-hide the Play button as soon as metadata appears. It stays disabled until a real stream exists — never Path=/stub. jellyfin-web otherwise hides Play when MediaSources are empty.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableNoStreamsOnError" name="EnableNoStreamsOnError" type="checkbox" is="emby-checkbox" />
+                            <span>Show "No streams available" when GetItem fails</span>
+                        </label>
+                        <div class="fieldDescription">If GetItem errors, returns empty sources, or only /stub placeholders, replace the version-panel spinner with "No streams available".</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableImmediateSeriesMetadata" name="EnableImmediateSeriesMetadata" type="checkbox" is="emby-checkbox" />
+                            <span>Show series and season metadata without waiting on GetItem</span>
+                        </label>
+                        <div class="fieldDescription">Return TMDB series/season metadata immediately so ChildCount and overview are not replaced by a hanging or thin GetItem. Turn off to wait for GetItem on those pages.</div>
+                    </div>
+
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Series children</h2>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableTmdbSeasons" name="EnableTmdbSeasons" type="checkbox" is="emby-checkbox" />
+                            <span>Serve TMDB seasons for unowned series</span>
+                        </label>
+                        <div class="fieldDescription">Answer /Shows/{id}/Seasons and series GetItems?ParentId= with TMDB seasons so unowned shows list seasons without waiting on Gelato insert.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableTmdbEpisodes" name="EnableTmdbEpisodes" type="checkbox" is="emby-checkbox" />
+                            <span>Serve TMDB episodes for unowned seasons</span>
+                        </label>
+                        <div class="fieldDescription">Answer /Shows/{id}/Episodes and season GetItems?ParentId= with TMDB episodes for unowned seasons.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableEmptyNextUpForStubs" name="EnableEmptyNextUpForStubs" type="checkbox" is="emby-checkbox" />
+                            <span>Return empty Next Up for unowned series</span>
+                        </label>
+                        <div class="fieldDescription">Return an empty /Shows/NextUp?SeriesId= list for TMDB stubs so jellyfin-web does not fall through to global continue-watching titles.</div>
+                    </div>
+
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Fallbacks for unowned titles</h2>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableGetItemStubFallback" name="EnableGetItemStubFallback" type="checkbox" is="emby-checkbox" />
+                            <span>Return a stub item when GetItem 404s</span>
+                        </label>
+                        <div class="fieldDescription">If GetItem still 404s after Gelato insert, serve the cached TMDB search stub so the details page is not blank. GetItem is never skipped on the way in.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableAccessoryEmptyFallback" name="EnableAccessoryEmptyFallback" type="checkbox" is="emby-checkbox" />
+                            <span>Return empty lists for theme songs, similar, and ancestors</span>
+                        </label>
+                        <div class="fieldDescription">Turn ThemeMedia, Similar, Ancestors, and SpecialFeatures 404s for TMDB stubs into empty 200 responses so accessory widgets do not hang.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableTmdbPosterProxy" name="EnableTmdbPosterProxy" type="checkbox" is="emby-checkbox" />
+                            <span>Proxy TMDB posters for unowned titles</span>
+                        </label>
+                        <div class="fieldDescription">Fetch TMDB CDN artwork for search stubs so posters still load after a Gelato cache wipe.</div>
                     </div>
 
                     <div>
@@ -57,7 +178,23 @@
 
         <script type="text/javascript">
             var TmdbSearchConfig = {
-                pluginUniqueId: 'a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b'
+                pluginUniqueId: 'a8f3c2e1-4b5d-6e7f-8a9b-0c1d2e3f4a5b',
+                featureIds: [
+                    'EnableTmdbLibrarySearch',
+                    'EnableAsyncStreamUi',
+                    'EnableImmediateTmdbMetadata',
+                    'EnableBackgroundStreamLoading',
+                    'EnableHidePageSpinner',
+                    'EnableShowPlayBeforeStreams',
+                    'EnableNoStreamsOnError',
+                    'EnableImmediateSeriesMetadata',
+                    'EnableTmdbSeasons',
+                    'EnableTmdbEpisodes',
+                    'EnableEmptyNextUpForStubs',
+                    'EnableGetItemStubFallback',
+                    'EnableAccessoryEmptyFallback',
+                    'EnableTmdbPosterProxy'
+                ]
             };
 
             (function () {
@@ -70,7 +207,9 @@
                     document.querySelector('#Language').value = config.Language || '';
                     document.querySelector('#IncludeAdult').checked = config.IncludeAdult === true;
                     document.querySelector('#CacheTtlSeconds').value = config.CacheTtlSeconds || 600;
-                    document.querySelector('#EnableAsyncStreamUi').checked = config.EnableAsyncStreamUi !== false;
+                    TmdbSearchConfig.featureIds.forEach(function (id) {
+                        document.querySelector('#' + id).checked = config[id] !== false;
+                    });
                 }
 
                 function loadConfig() {
@@ -93,7 +232,9 @@
                         config.Language = document.querySelector('#Language').value;
                         config.IncludeAdult = document.querySelector('#IncludeAdult').checked;
                         config.CacheTtlSeconds = parseInt(document.querySelector('#CacheTtlSeconds').value, 10) || 600;
-                        config.EnableAsyncStreamUi = document.querySelector('#EnableAsyncStreamUi').checked;
+                        TmdbSearchConfig.featureIds.forEach(function (id) {
+                            config[id] = document.querySelector('#' + id).checked;
+                        });
 
                         return ApiClient.updatePluginConfiguration(TmdbSearchConfig.pluginUniqueId, config);
                     }).then(function () {

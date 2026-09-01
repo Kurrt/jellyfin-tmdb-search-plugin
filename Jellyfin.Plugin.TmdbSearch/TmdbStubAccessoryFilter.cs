@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -33,7 +34,8 @@ public sealed class TmdbStubAccessoryFilter : IAsyncAlwaysRunResultFilter, IOrde
     /// <inheritdoc />
     public async Task OnResultExecutionAsync(ResultExecutingContext ctx, ResultExecutionDelegate next)
     {
-        if (TmdbItemActionFilter.IsNotFoundResult(ctx.Result)
+        if (PluginSettings.Current.EnableAccessoryEmptyFallback
+            && TmdbItemActionFilter.IsNotFoundResult(ctx.Result)
             && TmdbItemActionFilter.TryGetItemIdFromPath(ctx.HttpContext.Request.Path.Value, out var itemId)
             && HasStub(itemId))
         {

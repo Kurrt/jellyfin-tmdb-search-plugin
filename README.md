@@ -66,14 +66,27 @@ Open settings from **Dashboard → TMDB Search** in the sidebar (under Plugins).
 1. Paste your TMDB API key and click **Save** — you should see "Settings saved".
 2. Refresh the page to confirm the key persists.
 
-Optional settings:
+Optional settings (all feature toggles default **on** so upgrades keep current behavior):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Language | server default | TMDB language code (e.g. `en-US`) |
 | Include adult | off | Include adult TMDB results |
 | Cache TTL | 600 | Seconds to cache identical search queries in memory |
-| Load streams asynchronously | on | jellyfin-web shows TMDB metadata immediately and a version-panel spinner while Gelato streams load |
+| Replace library search with TMDB | on | Intercept movie/series Items search (`local:` still uses native search) |
+| Inject the details-page script | on | Install the jellyfin-web patch (needs File Transformation or JavaScript Injector) |
+| Show TMDB metadata immediately | on | Paint `/TmdbSearch/Items/{id}/Metadata` before Gelato GetItem finishes |
+| Load streams in the background | on | Keep original GetItem running and merge playable sources into the version panel |
+| Hide the page spinner after metadata appears | on | Suppress `Loading.show` / the full-page spinner once TMDB metadata is on screen |
+| Show Play immediately (disabled until streams exist) | on | Un-hide Play even when MediaSources are still empty |
+| Show "No streams available" when GetItem fails | on | Replace the version-panel spinner on GetItem error/empty/stub sources |
+| Show series and season metadata without waiting on GetItem | on | Do not block series/season pages on a hanging GetItem |
+| Serve TMDB seasons for unowned series | on | Answer `/Shows/{id}/Seasons` and series `GetItems?ParentId=` from TMDB |
+| Serve TMDB episodes for unowned seasons | on | Answer `/Shows/{id}/Episodes` and season `GetItems?ParentId=` from TMDB |
+| Return empty Next Up for unowned series | on | Empty `/Shows/NextUp?SeriesId=` so jellyfin-web does not show other titles |
+| Return a stub item when GetItem 404s | on | Cached TMDB stub after Gelato insert still 404s (GetItem is never skipped inbound) |
+| Return empty lists for theme songs, similar, and ancestors | on | ThemeMedia/Similar/Ancestors/SpecialFeatures 404s become empty 200s |
+| Proxy TMDB posters for unowned titles | on | Proxy TMDB CDN artwork for search stubs |
 
 ### Async stream UI (jellyfin-web)
 
@@ -108,7 +121,7 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 | Empty results for valid titles | TMDB may be unreachable; plugin falls back to native Jellyfin search |
 | Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs |
 | Item page is empty / Play errors on TMDB stubs | Update to 1.0.14+ (GetItem must not return cached `/stub` before Gelato materializes). Restart Jellyfin and hard-refresh the web client |
-| Whole item page waits until streams appear | Install [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) or [JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector), enable **Load streams asynchronously**, restart Jellyfin, hard-refresh the web client |
+| Whole item page waits until streams appear | Install [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) or [JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector), enable **Inject the details-page script** and **Show TMDB metadata immediately**, restart Jellyfin, hard-refresh the web client |
 | Blue page spinner stays after metadata appears / Play is missing | Update to 1.0.17+, restart Jellyfin, and hard-refresh. Play is hidden by jellyfin-web when MediaSources are empty; 1.0.17 un-hides it and suppresses `Loading.show` while streams load |
 | Series has no seasons / Next Up shows other titles | Update to 1.0.16+ so TMDB seasons are served and Next Up for unowned series is empty |
 | Want local/library-only search | Prefix query with `local:` (e.g. `local: matrix`) |

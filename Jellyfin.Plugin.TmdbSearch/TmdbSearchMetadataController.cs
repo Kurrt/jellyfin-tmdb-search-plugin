@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 using MediaBrowser.Model.Dto;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +38,11 @@ public sealed class TmdbSearchMetadataController : ControllerBase
         [FromRoute] Guid itemId,
         CancellationToken cancellationToken)
     {
+        if (!PluginSettings.Current.EnableImmediateTmdbMetadata)
+        {
+            return NotFound();
+        }
+
         var dto = await _metadata.TryGetAsync(itemId, cancellationToken).ConfigureAwait(false);
         if (dto is null)
         {

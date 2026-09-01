@@ -1,4 +1,5 @@
 using System.Reflection;
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 using MediaBrowser.Model.Dto;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -134,6 +135,39 @@ public sealed class TmdbItemActionFilterTests
         var ok = Assert.IsType<OkObjectResult>(resultContext.Result);
         var dto = Assert.IsType<BaseItemDto>(ok.Value);
         Assert.Equal("Fight Club", dto.Name);
+    }
+
+    /// <summary>
+    /// When the GetItem stub fallback is disabled, a 404 stays a 404.
+    /// </summary>
+    [Fact]
+    public async Task OnResultExecutionAsync_SkipsStubWhenFallbackDisabled()
+    {
+        var itemId = Guid.Parse("3ed52899-c7ff-a850-617d-da69c07207bf");
+        var filter = CreateFilterWithCachedStub(itemId, "Fight Club");
+        var executing = CreateGetItemExecutingContext(itemId).Executing;
+        var resultContext = new ResultExecutingContext(
+            executing,
+            new List<IFilterMetadata>(),
+            new NotFoundResult(),
+            controller: new object());
+        var config = new PluginConfiguration
+        {
+            EnableGetItemStubFallback = false,
+        };
+
+        using (PluginSettings.OverrideCurrent(config))
+        {
+            await filter.OnResultExecutionAsync(
+                resultContext,
+                () => Task.FromResult(new ResultExecutedContext(
+                    executing,
+                    new List<IFilterMetadata>(),
+                    resultContext.Result,
+                    controller: new object())));
+        }
+
+        Assert.IsType<NotFoundResult>(resultContext.Result);
     }
 
     /// <summary>

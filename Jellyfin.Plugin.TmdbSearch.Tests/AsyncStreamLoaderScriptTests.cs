@@ -108,5 +108,25 @@ public sealed class AsyncStreamLoaderScriptTests
         Assert.Contains("type === 'Movie' || type === 'Episode'", script, StringComparison.Ordinal);
         Assert.DoesNotContain("type !== 'Movie' && type !== 'Episode'", script, StringComparison.Ordinal);
         Assert.Contains("return meta;", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('immediateSeriesMetadata')", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies each details-page behavior is gated on a named client feature flag.
+    /// </summary>
+    [Fact]
+    public void Script_GatesEachDetailsFeatureOnFlags()
+    {
+        var script = LoadScript();
+
+        Assert.Contains("function featureEnabled", script, StringComparison.Ordinal);
+        Assert.Contains("window.__tmdbsearchFeatures", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('immediateTmdbMetadata')", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('backgroundStreamLoading')", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('hidePageSpinner')", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('showPlayBeforeStreams')", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('noStreamsOnError')", script, StringComparison.Ordinal);
+        Assert.Contains("featureEnabled('immediateSeriesMetadata')", script, StringComparison.Ordinal);
+        Assert.Contains("flags[name] !== false", script, StringComparison.Ordinal);
     }
 }

@@ -58,7 +58,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     /// <inheritdoc />
     public async Task OnActionExecutionAsync(ActionExecutingContext ctx, ActionExecutionDelegate next)
     {
-        if (!ctx.IsApiSearchAction())
+        if (!ctx.IsApiSearchAction() || !PluginSettings.Current.EnableTmdbLibrarySearch)
         {
             await next().ConfigureAwait(false);
             return;
