@@ -56,7 +56,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         {
             options.Filters.AddService<TmdbImageResourceFilter>(order: -1);
             options.Filters.AddService<TmdbSearchActionFilter>(order: 0);
-            options.Filters.AddService<TmdbShowChildrenActionFilter>(order: 1);
+            options.Filters.AddService<TmdbShowChildrenActionFilter>(order: 0);
             options.Filters.AddService<TmdbItemActionFilter>(order: 2);
             options.Filters.AddService<TmdbStubAccessoryFilter>(order: 3);
         });
