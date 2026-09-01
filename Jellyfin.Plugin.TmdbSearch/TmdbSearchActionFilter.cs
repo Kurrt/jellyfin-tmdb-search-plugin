@@ -111,7 +111,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
             limit = 25;
         }
 
-        var language = ResolveLanguage(config);
+        var language = TmdbLanguage.Resolve(config, _serverConfigurationManager);
         IReadOnlyList<TmdbSearchHit> hits;
         try
         {
@@ -183,17 +183,6 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         }
 
         return dtos;
-    }
-
-    private string ResolveLanguage(PluginConfiguration config)
-    {
-        if (!string.IsNullOrWhiteSpace(config.Language))
-        {
-            return config.Language;
-        }
-
-        var lang = _serverConfigurationManager.Configuration.PreferredMetadataLanguage;
-        return string.IsNullOrWhiteSpace(lang) ? "en-US" : lang;
     }
 
     private static HashSet<BaseItemKind> GetRequestedItemTypes(ActionExecutingContext ctx)

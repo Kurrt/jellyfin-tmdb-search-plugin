@@ -115,7 +115,12 @@ public static class TmdbSearchMapper
             popularity);
     }
 
-    private static int? ParseYear(string? date)
+    /// <summary>
+    /// Parses a four-digit year from an ISO date string.
+    /// </summary>
+    /// <param name="date">ISO date such as 1999-10-15.</param>
+    /// <returns>The year, or null when missing.</returns>
+    internal static int? ParseYear(string? date)
     {
         if (string.IsNullOrWhiteSpace(date) || date.Length < 4)
         {

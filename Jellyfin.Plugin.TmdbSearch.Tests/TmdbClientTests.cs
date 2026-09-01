@@ -103,6 +103,82 @@ public sealed class TmdbClientTests
     }
 
     /// <summary>
+    /// Verifies movie details include credits and runtime without touching search endpoints.
+    /// </summary>
+    [Fact]
+    public async Task GetTitleDetailsAsync_MapsMovieCreditsAndRuntime()
+    {
+        var handler = new ScriptedHandler(_ => Json(
+            """
+            {"id":550,"title":"Fight Club","overview":"Office worker","release_date":"1999-10-15","runtime":139,"vote_average":8.4,"tagline":"Mischief. Mayhem. Soap.","poster_path":"/p.jpg","genres":[{"id":18,"name":"Drama"}],"production_companies":[{"name":"Fox 2000 Pictures"}],"credits":{"cast":[{"name":"Brad Pitt","character":"Tyler Durden","order":0}],"crew":[{"name":"David Fincher","job":"Director"}]}}
+            """));
+        var client = CreateClient(handler);
+
+        var details = await client.GetTitleDetailsAsync(
+            BaseItemKind.Movie,
+            550,
+            Config(),
+            "en-US",
+            CancellationToken.None);
+
+        Assert.NotNull(details);
+        Assert.Equal("Fight Club", details.Title);
+        Assert.Equal(139, details.RuntimeMinutes);
+        Assert.Equal(8.4f, details.VoteAverage);
+        Assert.Equal(["Drama"], details.Genres);
+        Assert.Contains(details.People, person => person.Name == "Brad Pitt" && person.Type == PersonKind.Actor);
+        Assert.Contains(details.People, person => person.Name == "David Fincher" && person.Type == PersonKind.Director);
+        Assert.Contains("movie/550", Assert.Single(handler.RequestUris).AbsolutePath, StringComparison.Ordinal);
+        Assert.Contains("append_to_response=credits", handler.RequestUris[0].Query, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies TV details use name, first-air date, and episode runtime.
+    /// </summary>
+    [Fact]
+    public async Task GetTitleDetailsAsync_MapsSeriesEpisodeRuntime()
+    {
+        var handler = new ScriptedHandler(_ => Json(
+            """
+            {"id":1399,"name":"Game of Thrones","overview":"Westeros","first_air_date":"2011-04-17","episode_run_time":[60],"vote_average":8.9,"genres":[{"name":"Sci-Fi & Fantasy"}],"credits":{"cast":[],"crew":[{"name":"D. B. Weiss","job":"Writer"}]}}
+            """));
+        var client = CreateClient(handler);
+
+        var details = await client.GetTitleDetailsAsync(
+            BaseItemKind.Series,
+            1399,
+            Config(),
+            "en-US",
+            CancellationToken.None);
+
+        Assert.NotNull(details);
+        Assert.Equal(BaseItemKind.Series, details.Kind);
+        Assert.Equal("Game of Thrones", details.Title);
+        Assert.Equal(2011, details.Year);
+        Assert.Equal(60, details.RuntimeMinutes);
+        Assert.Contains(details.People, person => person.Type == PersonKind.Writer);
+    }
+
+    /// <summary>
+    /// Verifies TMDB detail failures return null so the cached search stub can still paint.
+    /// </summary>
+    [Fact]
+    public async Task GetTitleDetailsAsync_HttpFailureReturnsNull()
+    {
+        var handler = new ScriptedHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        var client = CreateClient(handler);
+
+        var details = await client.GetTitleDetailsAsync(
+            BaseItemKind.Movie,
+            550,
+            Config(),
+            "en-US",
+            CancellationToken.None);
+
+        Assert.Null(details);
+    }
+
+    /// <summary>
     /// Verifies untitled TMDB rows are dropped and remaining hits are still returned.
     /// </summary>
     [Fact]
