@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.10.0",
+        "changelog": "Proxy TMDB posters for unowned search stubs so artwork still loads after a Gelato data wipe",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.10/jellyfin-plugin-tmdbsearch_1.0.10.0.zip",
+        "checksum": "50d37cc690fca8582dd55ea020fd415b",
+        "timestamp": "2026-09-01T04:25:00Z"
+      },
+      {
         "version": "1.0.9.0",
         "changelog": "Remux-style item details: show metadata immediately and an in-panel spinner while Gelato streams load",
         "targetAbi": "10.11.0.0",

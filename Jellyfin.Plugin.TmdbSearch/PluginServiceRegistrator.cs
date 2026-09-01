@@ -26,14 +26,22 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
                 PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             });
 
+        services.AddSingleton<TmdbPosterCache>();
         services.AddSingleton<TmdbLibraryIndex>();
         services.AddSingleton<GelatoMetaBridge>();
         services.AddSingleton<TmdbSearchActionFilter>();
+        services.AddSingleton<TmdbImageResourceFilter>();
         services.AddSingleton<IHostedService, TmdbLibraryIndexHostedService>();
         services.AddSingleton<IHostedService, TmdbSearchJavaScriptRegistrationService>();
 
+        services.AddHttpClient(TmdbImageResourceFilter.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+
         services.PostConfigure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
         {
+            options.Filters.AddService<TmdbImageResourceFilter>(order: -1);
             options.Filters.AddService<TmdbSearchActionFilter>(order: 0);
         });
     }

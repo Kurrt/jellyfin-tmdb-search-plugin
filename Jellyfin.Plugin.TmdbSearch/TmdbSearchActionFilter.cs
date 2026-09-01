@@ -20,6 +20,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
     private readonly TmdbClient _tmdbClient;
     private readonly TmdbLibraryIndex _libraryIndex;
     private readonly GelatoMetaBridge _gelatoBridge;
+    private readonly TmdbPosterCache _posterCache;
     private readonly IDtoService _dtoService;
     private readonly ILibraryManager _libraryManager;
     private readonly IServerConfigurationManager _serverConfigurationManager;
@@ -33,6 +34,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         TmdbClient tmdbClient,
         TmdbLibraryIndex libraryIndex,
         GelatoMetaBridge gelatoBridge,
+        TmdbPosterCache posterCache,
         IDtoService dtoService,
         ILibraryManager libraryManager,
         IServerConfigurationManager serverConfigurationManager,
@@ -42,6 +44,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         _tmdbClient = tmdbClient;
         _libraryIndex = libraryIndex;
         _gelatoBridge = gelatoBridge;
+        _posterCache = posterCache;
         _dtoService = dtoService;
         _libraryManager = libraryManager;
         _serverConfigurationManager = serverConfigurationManager;
@@ -169,6 +172,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
 
             var stub = SearchResultDtoBuilder.CreateStub(hit, _applicationHost.SystemId);
             dtos.Add(stub.Dto);
+            _posterCache.Set(stub.Gelato.Guid, stub.Gelato.PosterUrl);
             _gelatoBridge.SaveSearchMeta(
                 stub.Gelato.Guid,
                 stub.Gelato.Kind,
