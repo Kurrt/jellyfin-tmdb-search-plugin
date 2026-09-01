@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
 
@@ -7,7 +8,7 @@ namespace Jellyfin.Plugin.TmdbSearch;
 /// <summary>
 /// Serves TMDB seasons/episodes and empty Next Up before Jellyfin 404s or user-wide continue-watching.
 /// </summary>
-public sealed class TmdbShowChildrenActionFilter : IAsyncActionFilter, IOrderedFilter
+public sealed class TmdbShowChildrenActionFilter : IAsyncActionFilter, IAsyncAlwaysRunResultFilter, IOrderedFilter
 {
     private readonly TmdbShowChildrenService _children;
     private readonly ILogger<TmdbShowChildrenActionFilter> _logger;
@@ -27,9 +28,10 @@ public sealed class TmdbShowChildrenActionFilter : IAsyncActionFilter, IOrderedF
 
     /// <inheritdoc />
     /// <remarks>
-    /// Runs before GetItem stub serving. These routes are not Gelato SyncStreams.
+    /// Runs at the same time as search, before Gelato's insert filter (order 1),
+    /// so GetSeasons is not blocked by a hanging AIOStreams GetItem-style insert.
     /// </remarks>
-    public int Order => 1;
+    public int Order => 0;
 
     /// <inheritdoc />
     public async Task OnActionExecutionAsync(ActionExecutingContext ctx, ActionExecutionDelegate next)
@@ -38,7 +40,7 @@ public sealed class TmdbShowChildrenActionFilter : IAsyncActionFilter, IOrderedF
             || !TmdbShowChildrenRoute.TryMatch(
                 ctx.HttpContext.Request.Path.Value,
                 ctx.GetActionName(),
-                ReadGuid(ctx, "seriesId", "SeriesId"),
+                ReadGuid(ctx, "seriesId", "SeriesId", "id", "Id"),
                 ReadGuid(ctx, "seasonId", "SeasonId"),
                 ReadGuid(ctx, "parentId", "ParentId"),
                 out var match))
@@ -64,21 +66,53 @@ public sealed class TmdbShowChildrenActionFilter : IAsyncActionFilter, IOrderedF
         ctx.Result = result;
     }
 
+    /// <inheritdoc />
+    public async Task OnResultExecutionAsync(ResultExecutingContext ctx, ResultExecutionDelegate next)
+    {
+        if (TmdbItemActionFilter.IsNotFoundResult(ctx.Result)
+            && TmdbShowChildrenRoute.TryMatch(
+                ctx.HttpContext.Request.Path.Value,
+                ctx.ActionDescriptor is ControllerActionDescriptor descriptor
+                    ? descriptor.ActionName
+                    : null,
+                ReadGuid(ctx, "seriesId", "SeriesId", "id", "Id"),
+                ReadGuid(ctx, "seasonId", "SeasonId"),
+                ReadGuid(ctx, "parentId", "ParentId"),
+                out var match))
+        {
+            var result = await _children
+                .TryCreateAsync(match, ctx.HttpContext.RequestAborted)
+                .ConfigureAwait(false);
+            if (result is not null)
+            {
+                ctx.Result = result;
+            }
+        }
+
+        await next().ConfigureAwait(false);
+    }
+
     private static bool HasSearchTerm(ActionExecutingContext ctx) =>
         ctx.IsApiSearchAction()
         && ctx.TryGetActionArgument("searchTerm", out string? searchTerm)
         && !string.IsNullOrWhiteSpace(searchTerm);
 
-    private static Guid? ReadGuid(ActionExecutingContext ctx, params string[] keys)
+    private static Guid? ReadGuid(ActionContext ctx, params string[] keys)
     {
+        var executing = ctx as ActionExecutingContext;
         foreach (var key in keys)
         {
-            if (ctx.TryGetActionArgument(key, out Guid guid) && guid != Guid.Empty)
+            if (executing is not null
+                && executing.TryGetActionArgument(key, out Guid guid)
+                && guid != Guid.Empty)
             {
                 return guid;
             }
 
-            if (ctx.TryGetActionArgument(key, out Guid? nullable) && nullable is { } value && value != Guid.Empty)
+            if (executing is not null
+                && executing.TryGetActionArgument(key, out Guid? nullable)
+                && nullable is { } value
+                && value != Guid.Empty)
             {
                 return value;
             }

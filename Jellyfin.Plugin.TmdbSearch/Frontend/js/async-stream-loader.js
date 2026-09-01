@@ -15,7 +15,9 @@
     var PAGE_SPINNER_CLASS = 'tmdbsearch-hide-docspinner';
     var PATCH_FLAG = '_tmdbsearchGetItemPatched';
     var ORIGINAL_FLAG = '_tmdbsearchOriginalGetItem';
+    var LOADING_PATCH_FLAG = '_tmdbsearchLoadingShowPatched';
     var videoNavCount = 0;
+    var spinnerOwnerId = null;
 
     /**
      * Injects play-button and spinner CSS once per document.
@@ -40,7 +42,8 @@
             '  cursor: pointer;',
             '}',
             'html.' + PAGE_SPINNER_CLASS + ' .docspinner,',
-            'html.' + PAGE_SPINNER_CLASS + ' .docspinner-overlay {',
+            'html.' + PAGE_SPINNER_CLASS + ' .docspinner-overlay,',
+            'html.' + PAGE_SPINNER_CLASS + ' .mdl-spinner {',
             '  display: none !important;',
             '  visibility: hidden !important;',
             '  opacity: 0 !important;',
@@ -232,26 +235,99 @@
     }
 
     /**
-     * Hides jellyfin-web's page-level ajax spinner once TMDB metadata is on screen.
+     * Returns jellyfin-web's loading helper. 10.11 exports window.Loading, not window.loading.
+     *
+     * @returns {object|null} Loading module with show/hide.
+     */
+    function getLoading() {
+        return window.Loading || window.loading || null;
+    }
+
+    /**
+     * Stops jellyfin-web from re-showing the page spinner while TMDB metadata is on screen.
+     * Hanging GetItem/GetSeasons would otherwise call Loading.show() again after render.
+     */
+    function patchLoadingShow() {
+        var loading = getLoading();
+        if (!loading || typeof loading.show !== 'function' || loading[LOADING_PATCH_FLAG]) {
+            return;
+        }
+
+        loading[LOADING_PATCH_FLAG] = true;
+        var originalShow = loading.show;
+        loading.show = function () {
+            if (document.documentElement
+                && document.documentElement.classList.contains(PAGE_SPINNER_CLASS)) {
+                return;
+            }
+
+            return originalShow.apply(this, arguments);
+        };
+    }
+
+    /**
+     * Hides jellyfin-web's page-level spinner once TMDB metadata is on screen.
      * Stream request timeouts belong to AIOStreams/Gelato; this only unblocks the page.
      */
     function hidePageSpinner() {
+        patchLoadingShow();
         if (document.documentElement) {
             document.documentElement.classList.add(PAGE_SPINNER_CLASS);
         }
 
-        var loading = window.loading;
+        var loading = getLoading();
         if (loading && typeof loading.hide === 'function') {
             loading.hide();
+        }
+
+        var spinners = document.querySelectorAll('.docspinner, .mdl-spinner');
+        for (var i = 0; i < spinners.length; i++) {
+            spinners[i].classList.remove('mdlSpinnerActive');
         }
     }
 
     /**
-     * Allows jellyfin-web to show the page spinner again on later requests.
+     * Allows jellyfin-web to show the page spinner again after leaving this item.
      */
     function restorePageSpinner() {
+        spinnerOwnerId = null;
         if (document.documentElement) {
             document.documentElement.classList.remove(PAGE_SPINNER_CLASS);
+        }
+    }
+
+    /**
+     * Restores the page spinner only when navigation has left the item that hid it.
+     */
+    function restorePageSpinnerIfLeftItem() {
+        if (spinnerOwnerId && !isCurrentPage(spinnerOwnerId)) {
+            restorePageSpinner();
+        }
+    }
+
+    /**
+     * Un-hides jellyfin-web play controls. Empty MediaSources make canPlay false,
+     * which adds .hide to .btnPlay — CSS opacity on a hidden button is not enough.
+     *
+     * @param {boolean} enabled True when Play should be clickable.
+     */
+    function revealPlayButton(enabled) {
+        var nodes = document.querySelectorAll('.mainDetailButtons, .btnPlay');
+        for (var i = 0; i < nodes.length; i++) {
+            nodes[i].classList.remove('hide');
+        }
+
+        var container = getVisiblePrimaryContainer();
+        if (!container) {
+            return;
+        }
+
+        if (enabled) {
+            container.classList.remove(PENDING_CLASS);
+            container.classList.add(READY_CLASS);
+        } else {
+            container.classList.add(PENDING_CLASS);
+            container.classList.remove(READY_CLASS);
         }
     }
 
@@ -266,6 +342,7 @@
 
         container.classList.add(PENDING_CLASS);
         container.classList.remove(READY_CLASS);
+        revealPlayButton(false);
     }
 
     /**
@@ -290,6 +367,7 @@
 
                 container.classList.remove(PENDING_CLASS);
                 container.classList.add(READY_CLASS);
+                revealPlayButton(true);
             }
         }
 
@@ -640,7 +718,7 @@
         proto.getItem = function (userId, itemId) {
             var self = this;
             var original = proto[ORIGINAL_FLAG];
-            restorePageSpinner();
+            restorePageSpinnerIfLeftItem();
             if (typeof itemId !== 'string' || !isCurrentPage(itemId)) {
                 return original.call(self, userId, itemId);
             }
@@ -654,8 +732,8 @@
                     return meta;
                 }
 
+                spinnerOwnerId = itemId;
                 hidePageSpinner();
-                Promise.resolve(streamsRequest).then(restorePageSpinner, restorePageSpinner);
 
                 var type = meta && meta.Type;
                 if (type === 'Movie' || type === 'Episode') {
@@ -667,6 +745,7 @@
                     return meta;
                 }
 
+                revealPlayButton(true);
                 return meta;
             }, function () {
                 return streamsRequest;
@@ -675,6 +754,8 @@
     }
 
     injectCss();
+    window.addEventListener('hashchange', restorePageSpinnerIfLeftItem);
+    window.addEventListener('popstate', restorePageSpinnerIfLeftItem);
 
     var realApiClient = null;
     try {

@@ -68,8 +68,13 @@ public sealed class AsyncStreamLoaderScriptTests
         Assert.Contains("function hidePageSpinner", script, StringComparison.Ordinal);
         Assert.Contains("tmdbsearch-hide-docspinner", script, StringComparison.Ordinal);
         Assert.Contains(".docspinner", script, StringComparison.Ordinal);
-        Assert.Contains("loading.hide", script, StringComparison.Ordinal);
-        Assert.Contains("function restorePageSpinner", script, StringComparison.Ordinal);
+        Assert.Contains(".mdl-spinner", script, StringComparison.Ordinal);
+        Assert.Contains("mdlSpinnerActive", script, StringComparison.Ordinal);
+        Assert.Contains("window.Loading", script, StringComparison.Ordinal);
+        Assert.Contains("function restorePageSpinnerIfLeftItem", script, StringComparison.Ordinal);
+        Assert.Contains("function revealPlayButton", script, StringComparison.Ordinal);
+        Assert.Contains("btnPlay", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("window.loading;", script, StringComparison.Ordinal);
     }
 
     /// <summary>

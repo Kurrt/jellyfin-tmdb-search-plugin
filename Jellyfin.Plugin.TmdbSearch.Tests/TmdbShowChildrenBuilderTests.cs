@@ -3,6 +3,8 @@ using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace Jellyfin.Plugin.TmdbSearch.Tests;
@@ -232,6 +234,19 @@ public sealed class TmdbShowChildrenRouteTests
             "GetNextUp",
             SeriesId,
             out _));
+    }
+
+    /// <summary>
+    /// Verifies show-children handling runs before Gelato insert and also on 404 fallback.
+    /// </summary>
+    [Fact]
+    public void ShowChildrenFilter_RunsBeforeGelatoAndOnNotFound()
+    {
+        Assert.True(typeof(IAsyncAlwaysRunResultFilter).IsAssignableFrom(typeof(TmdbShowChildrenActionFilter)));
+        Assert.True(typeof(IAsyncActionFilter).IsAssignableFrom(typeof(TmdbShowChildrenActionFilter)));
+        Assert.Equal(0, new TmdbShowChildrenActionFilter(
+            children: null!,
+            logger: NullLogger<TmdbShowChildrenActionFilter>.Instance).Order);
     }
 
     /// <summary>

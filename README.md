@@ -84,9 +84,7 @@ With it enabled (and File Transformation or JavaScript Injector installed):
 - Poster, overview, cast, genres, and other TMDB fields appear immediately from `/TmdbSearch/Items/{id}/Metadata`.
 - `getItem` is not rewritten with `Fields=`. Jellyfin `Fields=` replaces the default DTO set, so a ChildCount-only request would strip metadata.
 - A spinner in the Version / Audio / Subtitles panel is the only stream-loading indicator.
-- The page-level blue spinner is hidden once TMDB metadata is on screen. If Gelato/AIOStreams return an error or no playable streams, the version panel shows "No streams available" instead of spinning forever. Stream timeouts belong to AIOStreams/Gelato.
-- Series pages return TMDB metadata immediately (including season counts) and list TMDB seasons/episodes. Next Up for an unowned series is empty so the client does not fall through to other shows.
-- Play stays disabled until a non-placeholder stream exists, then the version picker fills in. `Path=/stub` is never treated as playable.
+- The page-level blue spinner is hidden once TMDB metadata is on screen, including suppressing jellyfin-web `Loading.show` so a hanging GetItem cannot bring it back. Play is un-hidden even when MediaSources are still empty (disabled until a real stream exists). If Gelato/AIOStreams return an error or no playable streams, the version panel shows "No streams available". Stream timeouts belong to AIOStreams/Gelato.
 - Owned local library titles (not in the TMDB stub cache) still use a single `GetItem`.
 - Native apps (Android, Infuse, Swiftfin, etc.) still wait on a single `GetItem` — this patch is web-only.
 
@@ -111,7 +109,7 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 | Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs |
 | Item page is empty / Play errors on TMDB stubs | Update to 1.0.14+ (GetItem must not return cached `/stub` before Gelato materializes). Restart Jellyfin and hard-refresh the web client |
 | Whole item page waits until streams appear | Install [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) or [JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector), enable **Load streams asynchronously**, restart Jellyfin, hard-refresh the web client |
-| Blue page spinner stays after metadata appears | Update to 1.0.16+ and hard-refresh. Stream errors/empty results stop the version-panel spinner; AIOStreams/Gelato still own request timeouts |
+| Blue page spinner stays after metadata appears / Play is missing | Update to 1.0.17+, restart Jellyfin, and hard-refresh. Play is hidden by jellyfin-web when MediaSources are empty; 1.0.17 un-hides it and suppresses `Loading.show` while streams load |
 | Series has no seasons / Next Up shows other titles | Update to 1.0.16+ so TMDB seasons are served and Next Up for unowned series is empty |
 | Want local/library-only search | Prefix query with `local:` (e.g. `local: matrix`) |
 
