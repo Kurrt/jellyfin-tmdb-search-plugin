@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.TmdbSearch.Web;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         services.AddSingleton<GelatoMetaBridge>();
         services.AddSingleton<TmdbSearchActionFilter>();
         services.AddSingleton<IHostedService, TmdbLibraryIndexHostedService>();
+        services.AddSingleton<IHostedService, TmdbSearchJavaScriptRegistrationService>();
 
         services.PostConfigure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
         {

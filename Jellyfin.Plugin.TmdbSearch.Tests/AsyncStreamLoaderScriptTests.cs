@@ -1,0 +1,50 @@
+using Jellyfin.Plugin.TmdbSearch.Web;
+using Xunit;
+
+namespace Jellyfin.Plugin.TmdbSearch.Tests;
+
+/// <summary>
+/// Contract tests for the Remux-style jellyfin-web stream loader patch.
+/// </summary>
+public sealed class AsyncStreamLoaderScriptTests
+{
+    /// <summary>
+    /// Loads the embedded client script used for injection.
+    /// </summary>
+    /// <returns>JavaScript source.</returns>
+    private static string LoadScript() => WebInjection.ReadAsyncStreamLoaderScript();
+
+    /// <summary>
+    /// Verifies the patch rewrites only getItem and requests metadata before MediaSources.
+    /// </summary>
+    [Fact]
+    public void Script_PatchesGetItemWithChildCountThenMediaSources()
+    {
+        var script = LoadScript();
+
+        Assert.Contains("proto.getItem = function", script, StringComparison.Ordinal);
+        Assert.Contains("ChildCount,ProviderIds,Path", script, StringComparison.Ordinal);
+        Assert.Contains("withFields(baseUrl, 'MediaSources')", script, StringComparison.Ordinal);
+        Assert.Contains("tmdbsearch-sources-loading", script, StringComparison.Ordinal);
+        Assert.Contains("No streams available", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("XMLHttpRequest.prototype.open = function", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("proto.fetch = function", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies Gelato/TMDB stub detection and play gating class names.
+    /// </summary>
+    [Fact]
+    public void Script_DetectsGelatoItemsAndGatesPlayButton()
+    {
+        var script = LoadScript();
+
+        Assert.Contains("function needsAsyncStreams", script, StringComparison.Ordinal);
+        Assert.Contains("Stremio", script, StringComparison.Ordinal);
+        Assert.Contains("Virtual", script, StringComparison.Ordinal);
+        Assert.Contains("/stub", script, StringComparison.Ordinal);
+        Assert.Contains("tmdbsearch-streams-pending", script, StringComparison.Ordinal);
+        Assert.Contains("tmdbsearch-streams-ready", script, StringComparison.Ordinal);
+        Assert.Contains("isCurrentPage", script, StringComparison.Ordinal);
+    }
+}

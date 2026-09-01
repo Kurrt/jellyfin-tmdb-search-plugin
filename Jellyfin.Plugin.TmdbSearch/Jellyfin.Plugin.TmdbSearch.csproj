@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.0.8</Version>
+    <Version>1.0.9</Version>
     <Authors>kurtinvernon</Authors>
     <Description>Replaces Jellyfin Items search with direct TMDB lookup.</Description>
   </PropertyGroup>
@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Configuration\config.html" />
+    <EmbeddedResource Include="Frontend\js\async-stream-loader.js" />
   </ItemGroup>
 
 </Project>

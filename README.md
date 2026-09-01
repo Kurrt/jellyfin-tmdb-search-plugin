@@ -7,6 +7,7 @@ Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/
 - Intercepts movie/series search and queries TMDB directly (fast, Remux-style discovery).
 - If you already have the title in your library (matched by TMDB id), returns the real Jellyfin item.
 - If you do not, returns a TMDB result stub and seeds [Gelato](https://github.com/lostb1t/Gelato) so click-to-insert/playback still works.
+- On the **Jellyfin web** item page, metadata (poster, plot, details) can render immediately while Gelato streams fill in with a small in-panel spinner — the same pattern as [Remux](https://github.com/lostb1t/remux).
 - Prefix a query with `local:` to use native Jellyfin search instead (music, people, or local-only lookup).
 
 ## Requirements
@@ -14,6 +15,7 @@ Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/
 - Jellyfin **10.11.x**
 - A [TMDB API key](https://www.themoviedb.org/settings/api) (v3)
 - [Gelato](https://github.com/lostb1t/Gelato) for streaming titles you do not already own
+- For Remux-style async stream UI in jellyfin-web (optional but recommended): [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) and/or [JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector)
 
 ## Install
 
@@ -71,6 +73,21 @@ Optional settings:
 | Language | server default | TMDB language code (e.g. `en-US`) |
 | Include adult | off | Include adult TMDB results |
 | Cache TTL | 600 | Seconds to cache identical search queries in memory |
+| Load streams asynchronously | on | jellyfin-web shows metadata immediately and a small spinner while Gelato streams load |
+
+### Async stream UI (jellyfin-web)
+
+Without this, clicking a TMDB/Gelato title keeps the **whole details page** in a loading state until addon streams exist.
+
+With it enabled (and File Transformation or JavaScript Injector installed):
+
+- Poster, overview, and other metadata appear immediately.
+- A spinner in the Version / Audio / Subtitles panel is the only stream-loading indicator.
+- Play stays disabled until streams are ready, then the version picker fills in.
+- Owned local library titles and series pages are unchanged.
+- Native apps (Android, Infuse, Swiftfin, etc.) still wait on a single `GetItem` — this patch is web-only.
+
+Restart Jellyfin after installing File Transformation or JavaScript Injector, then refresh the web client.
 
 ## Gelato setup
 
@@ -89,6 +106,7 @@ This plugin replaces search only. Gelato still handles insert and playback for t
 | No TMDB results | Check API key on the plugin config page; confirm Jellyfin was restarted after install; check server logs for `TMDB search passthrough` |
 | Empty results for valid titles | TMDB may be unreachable; plugin falls back to native Jellyfin search |
 | Click on unowned title 404s | Gelato must be installed and configured; check Gelato logs |
+| Whole item page spins until streams appear | Install [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) or [JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector), enable **Load streams asynchronously**, restart Jellyfin, hard-refresh the web client |
 | Want local/library-only search | Prefix query with `local:` (e.g. `local: matrix`) |
 
 ## Build and test

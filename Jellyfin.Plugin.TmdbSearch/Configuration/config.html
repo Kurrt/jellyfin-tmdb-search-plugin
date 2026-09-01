@@ -38,6 +38,14 @@
                         <div class="fieldDescription">How long identical search queries are cached in memory (default 600).</div>
                     </div>
 
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input id="EnableAsyncStreamUi" name="EnableAsyncStreamUi" type="checkbox" is="emby-checkbox" />
+                            <span>Load streams asynchronously on item details</span>
+                        </label>
+                        <div class="fieldDescription">Show poster and metadata immediately, with a small spinner in the version panel while Gelato streams load. Requires the File Transformation or JavaScript Injector plugin.</div>
+                    </div>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -62,6 +70,7 @@
                     document.querySelector('#Language').value = config.Language || '';
                     document.querySelector('#IncludeAdult').checked = config.IncludeAdult === true;
                     document.querySelector('#CacheTtlSeconds').value = config.CacheTtlSeconds || 600;
+                    document.querySelector('#EnableAsyncStreamUi').checked = config.EnableAsyncStreamUi !== false;
                 }
 
                 function loadConfig() {
@@ -84,6 +93,7 @@
                         config.Language = document.querySelector('#Language').value;
                         config.IncludeAdult = document.querySelector('#IncludeAdult').checked;
                         config.CacheTtlSeconds = parseInt(document.querySelector('#CacheTtlSeconds').value, 10) || 600;
+                        config.EnableAsyncStreamUi = document.querySelector('#EnableAsyncStreamUi').checked;
 
                         return ApiClient.updatePluginConfiguration(TmdbSearchConfig.pluginUniqueId, config);
                     }).then(function () {
