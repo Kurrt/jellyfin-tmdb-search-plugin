@@ -40,7 +40,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public int CacheTtlSeconds { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether jellyfin-web shows a placeholder stream-status hint on item details.
+    /// Gets or sets a value indicating whether jellyfin-web loads TMDB metadata first and fills streams asynchronously.
     /// </summary>
     public bool EnableAsyncStreamUi { get; set; }
 }

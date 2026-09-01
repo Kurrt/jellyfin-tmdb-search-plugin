@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Text.Json;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.TmdbSearch.Configuration;
@@ -24,6 +25,7 @@ public sealed class TmdbClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<TmdbClient> _logger;
     private readonly ConcurrentDictionary<string, CacheEntry<IReadOnlyList<TmdbSearchHit>>> _searchCache = new();
+    private readonly ConcurrentDictionary<string, CacheEntry<TmdbTitleDetails>> _detailsCache = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TmdbClient"/> class.
@@ -102,6 +104,70 @@ public sealed class TmdbClient
         var ttl = TimeSpan.FromSeconds(Math.Max(config.CacheTtlSeconds, 0));
         _searchCache[cacheKey] = new CacheEntry<IReadOnlyList<TmdbSearchHit>>(merged, ttl);
         return merged;
+    }
+
+    /// <summary>
+    /// Loads TMDB movie or series details with credits. Failures return null so search-stub
+    /// metadata can still paint the details page.
+    /// </summary>
+    /// <param name="kind">Movie or series.</param>
+    /// <param name="tmdbId">TMDB numeric id.</param>
+    /// <param name="config">Plugin configuration.</param>
+    /// <param name="language">Resolved TMDB language code.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Mapped details, or null when TMDB is unavailable or the kind is unsupported.</returns>
+    public async Task<TmdbTitleDetails?> GetTitleDetailsAsync(
+        BaseItemKind kind,
+        int tmdbId,
+        PluginConfiguration config,
+        string language,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(config.TmdbApiKey) || tmdbId <= 0)
+        {
+            return null;
+        }
+
+        var endpointKind = kind switch
+        {
+            BaseItemKind.Movie => "movie",
+            BaseItemKind.Series => "tv",
+            _ => null,
+        };
+        if (endpointKind is null)
+        {
+            return null;
+        }
+
+        var cacheKey = $"{language}|{endpointKind}|{tmdbId}";
+        if (_detailsCache.TryGetValue(cacheKey, out var cached) && !cached.IsExpired)
+        {
+            return cached.Value;
+        }
+
+        try
+        {
+            var url =
+                $"3/{endpointKind}/{tmdbId}?api_key={Uri.EscapeDataString(config.TmdbApiKey)}&language={Uri.EscapeDataString(language)}&append_to_response=credits";
+            var parsed = await GetJsonAsync<TmdbTitleDetailsResponse>(url, cancellationToken).ConfigureAwait(false);
+            var details = parsed is null ? null : MapTitleDetails(parsed, kind);
+            if (details is not null)
+            {
+                var ttl = TimeSpan.FromSeconds(Math.Max(config.CacheTtlSeconds, 0));
+                _detailsCache[cacheKey] = new CacheEntry<TmdbTitleDetails>(details, ttl);
+            }
+
+            return details;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "TMDB {Kind} details failed for id {TmdbId}", endpointKind, tmdbId);
+            return null;
+        }
     }
 
     private async Task<bool> TryAddSearchPartAsync(
@@ -184,6 +250,125 @@ public sealed class TmdbClient
             .ConfigureAwait(false);
 
         return parsed ?? new TmdbSearchResponse();
+    }
+
+    private async Task<T?> GetJsonAsync<T>(string url, CancellationToken cancellationToken)
+        where T : class
+    {
+        using var response = await _httpClient
+            .GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        return await JsonSerializer
+            .DeserializeAsync<T>(stream, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static TmdbTitleDetails? MapTitleDetails(TmdbTitleDetailsResponse row, BaseItemKind kind)
+    {
+        var title = kind == BaseItemKind.Series
+            ? FirstNonEmpty(row.Name, row.Title)
+            : FirstNonEmpty(row.Title, row.Name);
+        if (title is null)
+        {
+            return null;
+        }
+
+        var date = kind == BaseItemKind.Series ? row.FirstAirDate : row.ReleaseDate;
+        DateTime? premiere = null;
+        if (!string.IsNullOrWhiteSpace(date)
+            && DateTime.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedDate))
+        {
+            premiere = parsedDate;
+        }
+
+        var runtime = kind == BaseItemKind.Series
+            ? row.EpisodeRunTime.FirstOrDefault(static minutes => minutes > 0)
+            : row.Runtime;
+        if (runtime is <= 0)
+        {
+            runtime = null;
+        }
+
+        var people = new List<TmdbPersonCredit>();
+        if (row.Credits is not null)
+        {
+            foreach (var cast in row.Credits.Cast.OrderBy(static member => member.Order).Take(15))
+            {
+                if (string.IsNullOrWhiteSpace(cast.Name))
+                {
+                    continue;
+                }
+
+                people.Add(new TmdbPersonCredit(cast.Name.Trim(), cast.Character, PersonKind.Actor));
+            }
+
+            foreach (var crew in row.Credits.Crew)
+            {
+                if (string.IsNullOrWhiteSpace(crew.Name) || MapCrewJob(crew.Job) is not { } personKind)
+                {
+                    continue;
+                }
+
+                people.Add(new TmdbPersonCredit(crew.Name.Trim(), crew.Job, personKind));
+            }
+        }
+
+        return new TmdbTitleDetails(
+            row.Id,
+            kind,
+            title,
+            row.Overview,
+            TmdbSearchMapper.ParseYear(date),
+            premiere,
+            row.PosterPath,
+            runtime,
+            row.VoteAverage > 0 ? (float)row.VoteAverage : null,
+            row.Tagline,
+            NamesOf(row.Genres),
+            people,
+            NamesOf(row.ProductionCompanies));
+    }
+
+    private static IReadOnlyList<string> NamesOf(IEnumerable<TmdbNamedRow> rows)
+    {
+        var names = new List<string>();
+        foreach (var row in rows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Name))
+            {
+                continue;
+            }
+
+            names.Add(row.Name.Trim());
+        }
+
+        return names;
+    }
+
+    private static PersonKind? MapCrewJob(string? job) =>
+        job switch
+        {
+            "Director" => PersonKind.Director,
+            "Writer" or "Screenplay" or "Story" => PersonKind.Writer,
+            "Creator" => PersonKind.Creator,
+            _ => null,
+        };
+
+    private static string? FirstNonEmpty(string? preferred, string? fallback)
+    {
+        if (!string.IsNullOrWhiteSpace(preferred))
+        {
+            return preferred.Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(fallback) ? null : fallback.Trim();
     }
 
     private static string BuildSearchUrl(
