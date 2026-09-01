@@ -16,6 +16,7 @@ public class PluginConfiguration : BasePluginConfiguration
         Language = string.Empty;
         IncludeAdult = false;
         CacheTtlSeconds = 600;
+        EnableAsyncStreamUi = true;
     }
 
     /// <summary>
@@ -37,4 +38,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets the in-memory search query cache TTL in seconds.
     /// </summary>
     public int CacheTtlSeconds { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether jellyfin-web should load streams asynchronously on item details.
+    /// </summary>
+    public bool EnableAsyncStreamUi { get; set; }
 }

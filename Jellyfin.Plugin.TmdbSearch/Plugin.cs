@@ -51,6 +51,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// </summary>
     public static Plugin? Instance { get; private set; }
 
+    /// <summary>
+    /// Raised after plugin configuration is saved so hosted services can re-register UI hooks.
+    /// </summary>
+    public static event Action<PluginConfiguration>? PluginConfigurationChanged;
+
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
     {
@@ -78,7 +83,17 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         base.UpdateConfiguration(config);
 
         _logger.LogInformation(
-            "TMDB Search configuration updated (api key configured: {HasKey})",
-            !string.IsNullOrWhiteSpace(config.TmdbApiKey));
+            "TMDB Search configuration updated (api key configured: {HasKey}, async stream UI: {AsyncUi})",
+            !string.IsNullOrWhiteSpace(config.TmdbApiKey),
+            config.EnableAsyncStreamUi);
+
+        try
+        {
+            PluginConfigurationChanged?.Invoke(config);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error while invoking PluginConfigurationChanged");
+        }
     }
 }
