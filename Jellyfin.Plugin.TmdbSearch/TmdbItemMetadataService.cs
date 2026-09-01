@@ -66,8 +66,24 @@ public sealed class TmdbItemMetadataService
             {
                 _logger.LogDebug("TMDB details unavailable for stub {ItemId}; returning search metadata", itemId);
             }
+            else if (stub.Type == BaseItemKind.Series)
+            {
+                CacheSeriesSeasons(stub, details);
+            }
         }
 
         return TmdbItemMetadataBuilder.FromStub(stub, details);
+    }
+
+    /// <summary>
+    /// Stores season stubs so GetSeasons/GetItem can resolve children after the series page loads.
+    /// </summary>
+    private void CacheSeriesSeasons(BaseItemDto series, TmdbTitleDetails details)
+    {
+        foreach (var seasonInfo in details.Seasons)
+        {
+            var season = TmdbShowChildrenBuilder.CreateSeason(series, seasonInfo);
+            _stubCache.Set(season.Id, season, TmdbSearchMapper.ToPosterUrl(seasonInfo.PosterPath));
+        }
     }
 }

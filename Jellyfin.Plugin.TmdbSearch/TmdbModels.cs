@@ -46,6 +46,7 @@ public sealed record TmdbPersonCredit(string Name, string? Role, PersonKind Type
 /// <param name="Genres">Genre names.</param>
 /// <param name="People">Cast and selected crew.</param>
 /// <param name="Studios">Production company names.</param>
+/// <param name="Seasons">TMDB season summaries for series; empty for movies.</param>
 public sealed record TmdbTitleDetails(
     int TmdbId,
     BaseItemKind Kind,
@@ -59,7 +60,46 @@ public sealed record TmdbTitleDetails(
     string? Tagline,
     IReadOnlyList<string> Genres,
     IReadOnlyList<TmdbPersonCredit> People,
-    IReadOnlyList<string> Studios);
+    IReadOnlyList<string> Studios,
+    IReadOnlyList<TmdbSeasonInfo> Seasons);
+
+/// <summary>
+/// A TMDB season summary from TV details, used to populate series children.
+/// </summary>
+/// <param name="SeasonNumber">1-based season number; 0 is specials.</param>
+/// <param name="Name">Season display name.</param>
+/// <param name="Overview">Season plot when known.</param>
+/// <param name="EpisodeCount">Number of episodes in the season.</param>
+/// <param name="AirDate">Season air date when known.</param>
+/// <param name="PosterPath">TMDB poster path segment.</param>
+public sealed record TmdbSeasonInfo(
+    int SeasonNumber,
+    string Name,
+    string? Overview,
+    int EpisodeCount,
+    DateTime? AirDate,
+    string? PosterPath);
+
+/// <summary>
+/// A TMDB episode row from a season details request.
+/// </summary>
+/// <param name="EpisodeNumber">1-based episode number within the season.</param>
+/// <param name="Name">Episode title.</param>
+/// <param name="Overview">Episode plot when known.</param>
+/// <param name="AirDate">Air date when known.</param>
+/// <param name="StillPath">TMDB still image path segment.</param>
+/// <param name="RuntimeMinutes">Runtime in minutes when known.</param>
+/// <param name="VoteAverage">TMDB vote average on a 0-10 scale.</param>
+/// <param name="TmdbEpisodeId">TMDB episode id when known.</param>
+public sealed record TmdbEpisodeInfo(
+    int EpisodeNumber,
+    string Name,
+    string? Overview,
+    DateTime? AirDate,
+    string? StillPath,
+    int? RuntimeMinutes,
+    float? VoteAverage,
+    int? TmdbEpisodeId);
 
 /// <summary>
 /// TMDB paginated search response envelope.
@@ -169,6 +209,88 @@ internal sealed class TmdbTitleDetailsResponse
     /// <summary>Gets or sets appended credits.</summary>
     [JsonPropertyName("credits")]
     public TmdbCreditsResponse? Credits { get; set; }
+
+    /// <summary>Gets or sets season summaries for TV titles.</summary>
+    [JsonPropertyName("seasons")]
+    public List<TmdbSeasonRow> Seasons { get; set; } = [];
+}
+
+/// <summary>
+/// TMDB season summary row from TV details.
+/// </summary>
+internal sealed class TmdbSeasonRow
+{
+    /// <summary>Gets or sets the season number.</summary>
+    [JsonPropertyName("season_number")]
+    public int SeasonNumber { get; set; }
+
+    /// <summary>Gets or sets the season name.</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Gets or sets the season overview.</summary>
+    [JsonPropertyName("overview")]
+    public string? Overview { get; set; }
+
+    /// <summary>Gets or sets the episode count.</summary>
+    [JsonPropertyName("episode_count")]
+    public int EpisodeCount { get; set; }
+
+    /// <summary>Gets or sets the air date.</summary>
+    [JsonPropertyName("air_date")]
+    public string? AirDate { get; set; }
+
+    /// <summary>Gets or sets the poster path.</summary>
+    [JsonPropertyName("poster_path")]
+    public string? PosterPath { get; set; }
+}
+
+/// <summary>
+/// TMDB season details payload including episodes.
+/// </summary>
+internal sealed class TmdbSeasonEpisodesResponse
+{
+    /// <summary>Gets or sets episode rows.</summary>
+    [JsonPropertyName("episodes")]
+    public List<TmdbEpisodeRow> Episodes { get; set; } = [];
+}
+
+/// <summary>
+/// A single TMDB episode row.
+/// </summary>
+internal sealed class TmdbEpisodeRow
+{
+    /// <summary>Gets or sets the TMDB episode id.</summary>
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    /// <summary>Gets or sets the episode number.</summary>
+    [JsonPropertyName("episode_number")]
+    public int EpisodeNumber { get; set; }
+
+    /// <summary>Gets or sets the episode name.</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    /// <summary>Gets or sets the overview text.</summary>
+    [JsonPropertyName("overview")]
+    public string? Overview { get; set; }
+
+    /// <summary>Gets or sets the air date.</summary>
+    [JsonPropertyName("air_date")]
+    public string? AirDate { get; set; }
+
+    /// <summary>Gets or sets the still image path.</summary>
+    [JsonPropertyName("still_path")]
+    public string? StillPath { get; set; }
+
+    /// <summary>Gets or sets runtime in minutes.</summary>
+    [JsonPropertyName("runtime")]
+    public int? Runtime { get; set; }
+
+    /// <summary>Gets or sets the vote average.</summary>
+    [JsonPropertyName("vote_average")]
+    public double VoteAverage { get; set; }
 }
 
 /// <summary>

@@ -157,6 +157,63 @@ public sealed class TmdbClientTests
         Assert.Equal(2011, details.Year);
         Assert.Equal(60, details.RuntimeMinutes);
         Assert.Contains(details.People, person => person.Type == PersonKind.Writer);
+        Assert.Empty(details.Seasons);
+    }
+
+    /// <summary>
+    /// Verifies TV details include season summaries from the title payload.
+    /// </summary>
+    [Fact]
+    public async Task GetTitleDetailsAsync_MapsSeriesSeasons()
+    {
+        var handler = new ScriptedHandler(_ => Json(
+            """
+            {"id":1399,"name":"Game of Thrones","overview":"Westeros","first_air_date":"2011-04-17","episode_run_time":[60],"vote_average":8.9,"seasons":[{"season_number":0,"name":"Specials","episode_count":0},{"season_number":1,"name":"Season 1","overview":"Ned","episode_count":10,"air_date":"2011-04-17","poster_path":"/s1.jpg"},{"season_number":2,"name":"Season 2","episode_count":10,"air_date":"2012-04-01","poster_path":"/s2.jpg"}],"credits":{"cast":[],"crew":[]}}
+            """));
+        var client = CreateClient(handler);
+
+        var details = await client.GetTitleDetailsAsync(
+            BaseItemKind.Series,
+            1399,
+            Config(),
+            "en-US",
+            CancellationToken.None);
+
+        Assert.NotNull(details);
+        Assert.Equal(2, details.Seasons.Count);
+        Assert.Equal(1, details.Seasons[0].SeasonNumber);
+        Assert.Equal("Season 1", details.Seasons[0].Name);
+        Assert.Equal(10, details.Seasons[0].EpisodeCount);
+        Assert.Equal("/s1.jpg", details.Seasons[0].PosterPath);
+        Assert.Equal(2, details.Seasons[1].SeasonNumber);
+    }
+
+    /// <summary>
+    /// Verifies TMDB season episode lists map episode number, name, and still path.
+    /// </summary>
+    [Fact]
+    public async Task GetSeasonEpisodesAsync_MapsEpisodeRows()
+    {
+        var handler = new ScriptedHandler(_ => Json(
+            """
+            {"id":3624,"season_number":1,"name":"Season 1","episodes":[{"id":63056,"episode_number":1,"name":"Winter Is Coming","overview":"Ned","air_date":"2011-04-17","still_path":"/e1.jpg","runtime":62,"vote_average":8.3},{"id":63057,"episode_number":2,"name":"The Kingsroad","overview":"Travel","air_date":"2011-04-24","still_path":"/e2.jpg","runtime":56}]}
+            """));
+        var client = CreateClient(handler);
+
+        var episodes = await client.GetSeasonEpisodesAsync(
+            1399,
+            1,
+            Config(),
+            "en-US",
+            CancellationToken.None);
+
+        Assert.NotNull(episodes);
+        Assert.Equal(2, episodes.Count);
+        Assert.Equal(1, episodes[0].EpisodeNumber);
+        Assert.Equal("Winter Is Coming", episodes[0].Name);
+        Assert.Equal("/e1.jpg", episodes[0].StillPath);
+        Assert.Equal(62, episodes[0].RuntimeMinutes);
+        Assert.Contains("tv/1399/season/1", Assert.Single(handler.RequestUris).AbsolutePath, StringComparison.Ordinal);
     }
 
     /// <summary>

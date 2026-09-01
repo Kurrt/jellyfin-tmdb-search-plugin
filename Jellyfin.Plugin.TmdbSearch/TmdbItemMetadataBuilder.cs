@@ -47,6 +47,16 @@ public static class TmdbItemMetadataBuilder
             IsPlaceHolder = false,
             CanDownload = false,
             PlayAccess = PlayAccess.Full,
+            IndexNumber = stub.IndexNumber,
+            IndexNumberEnd = stub.IndexNumberEnd,
+            ParentIndexNumber = stub.ParentIndexNumber,
+            ParentId = stub.ParentId,
+            SeriesId = stub.SeriesId,
+            SeasonId = stub.SeasonId,
+            SeriesName = stub.SeriesName,
+            SeasonName = stub.SeasonName,
+            ChildCount = stub.ChildCount,
+            RecursiveItemCount = stub.RecursiveItemCount,
         };
 
         if (details is null)
@@ -91,6 +101,12 @@ public static class TmdbItemMetadataBuilder
                     Type = person.Type,
                 })
                 .ToArray();
+        }
+
+        if (details.Seasons.Count > 0)
+        {
+            dto.ChildCount = details.Seasons.Count;
+            dto.RecursiveItemCount = details.Seasons.Sum(static season => Math.Max(season.EpisodeCount, 0));
         }
 
         return dto;

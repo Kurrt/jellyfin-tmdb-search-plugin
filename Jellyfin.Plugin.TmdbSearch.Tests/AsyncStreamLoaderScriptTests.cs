@@ -55,4 +55,53 @@ public sealed class AsyncStreamLoaderScriptTests
             script,
             StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Verifies the page-level jellyfin-web spinner is hidden once TMDB metadata is shown.
+    /// Stream timeouts belong to AIOStreams/Gelato; this patch only hides the overlay.
+    /// </summary>
+    [Fact]
+    public void Script_HidesPageSpinnerWhenMetadataIsShown()
+    {
+        var script = LoadScript();
+
+        Assert.Contains("function hidePageSpinner", script, StringComparison.Ordinal);
+        Assert.Contains("tmdbsearch-hide-docspinner", script, StringComparison.Ordinal);
+        Assert.Contains(".docspinner", script, StringComparison.Ordinal);
+        Assert.Contains("loading.hide", script, StringComparison.Ordinal);
+        Assert.Contains("function restorePageSpinner", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies GetItem errors and empty/stub sources stop the stream spinner.
+    /// Does not add a homemade AIOStreams timeout.
+    /// </summary>
+    [Fact]
+    public void Script_TreatsGetItemErrorsAndEmptySourcesAsNoStreams()
+    {
+        var script = LoadScript();
+
+        Assert.Contains("Promise.resolve(original.call", script, StringComparison.Ordinal);
+        Assert.Contains(".catch(function () {", script, StringComparison.Ordinal);
+        Assert.Contains("return null;", script, StringComparison.Ordinal);
+        Assert.Contains("showNoStreams", script, StringComparison.Ordinal);
+        Assert.Contains("hasPlayableSources(full)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("25000", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("30000", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("AbortController", script, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies series/season pages return TMDB metadata immediately so ChildCount and
+    /// overview are not replaced by a hanging or thin GetItem stub.
+    /// </summary>
+    [Fact]
+    public void Script_ReturnsSeriesMetadataWithoutWaitingOnGetItem()
+    {
+        var script = LoadScript();
+
+        Assert.Contains("type === 'Movie' || type === 'Episode'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("type !== 'Movie' && type !== 'Episode'", script, StringComparison.Ordinal);
+        Assert.Contains("return meta;", script, StringComparison.Ordinal);
+    }
 }
