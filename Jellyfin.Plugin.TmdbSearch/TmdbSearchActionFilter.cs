@@ -172,7 +172,7 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
 
             var stub = SearchResultDtoBuilder.CreateStub(hit, _applicationHost.SystemId);
             dtos.Add(stub.Dto);
-            _posterCache.Set(stub.Gelato.Guid, stub.Gelato.PosterUrl);
+            _posterCache.Set(stub.Gelato.Guid, stub.Dto, stub.Gelato.PosterUrl);
             _gelatoBridge.SaveSearchMeta(
                 stub.Gelato.Guid,
                 stub.Gelato.Kind,

@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.11.0",
+        "changelog": "Serve cached TMDB search stubs from GetItem so unowned titles open after a Gelato data wipe",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.11/jellyfin-plugin-tmdbsearch_1.0.11.0.zip",
+        "checksum": "e83e4abe7985a3ff68bf50dbe183e153",
+        "timestamp": "2026-09-01T04:49:00Z"
+      },
+      {
         "version": "1.0.10.0",
         "changelog": "Proxy TMDB posters for unowned search stubs so artwork still loads after a Gelato data wipe",
         "targetAbi": "10.11.0.0",

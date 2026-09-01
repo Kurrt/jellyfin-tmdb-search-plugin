@@ -31,6 +31,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         services.AddSingleton<GelatoMetaBridge>();
         services.AddSingleton<TmdbSearchActionFilter>();
         services.AddSingleton<TmdbImageResourceFilter>();
+        services.AddSingleton<TmdbItemActionFilter>();
         services.AddSingleton<IHostedService, TmdbLibraryIndexHostedService>();
         services.AddSingleton<IHostedService, TmdbSearchJavaScriptRegistrationService>();
 
@@ -43,6 +44,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         {
             options.Filters.AddService<TmdbImageResourceFilter>(order: -1);
             options.Filters.AddService<TmdbSearchActionFilter>(order: 0);
+            options.Filters.AddService<TmdbItemActionFilter>(order: 2);
         });
     }
 }

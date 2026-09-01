@@ -1,9 +1,10 @@
 using System.Collections.Concurrent;
+using MediaBrowser.Model.Dto;
 
 namespace Jellyfin.Plugin.TmdbSearch;
 
 /// <summary>
-/// In-memory map of search-stub item ids to TMDB poster URLs for image proxying.
+/// In-memory map of search-stub item ids to DTOs and TMDB poster URLs.
 /// </summary>
 public sealed class TmdbPosterCache
 {
@@ -20,7 +21,7 @@ public sealed class TmdbPosterCache
     /// Initializes a new instance of the <see cref="TmdbPosterCache"/> class.
     /// </summary>
     /// <param name="timeProvider">Clock used for TTL expiry. Defaults to the system clock.</param>
-    /// <param name="ttl">How long poster URLs remain fetchable after search.</param>
+    /// <param name="ttl">How long stubs remain fetchable after search.</param>
     public TmdbPosterCache(TimeProvider? timeProvider = null, TimeSpan? ttl = null)
     {
         _timeProvider = timeProvider ?? TimeProvider.System;
@@ -32,14 +33,23 @@ public sealed class TmdbPosterCache
     /// </summary>
     /// <param name="itemId">Synthetic search item id.</param>
     /// <param name="posterUrl">Absolute TMDB poster URL.</param>
-    public void Set(Guid itemId, string? posterUrl)
+    public void Set(Guid itemId, string? posterUrl) => Set(itemId, dto: null, posterUrl);
+
+    /// <summary>
+    /// Stores a search stub so later GetItem and image requests can be served without Gelato.
+    /// </summary>
+    /// <param name="itemId">Synthetic search item id.</param>
+    /// <param name="dto">Search result DTO returned to clients.</param>
+    /// <param name="posterUrl">Absolute TMDB poster URL when known.</param>
+    public void Set(Guid itemId, BaseItemDto? dto, string? posterUrl)
     {
-        if (posterUrl is null || !IsAllowedTmdbImageUrl(posterUrl))
+        var allowedPoster = IsAllowedTmdbImageUrl(posterUrl) ? posterUrl : null;
+        if (dto is null && allowedPoster is null)
         {
             return;
         }
 
-        _entries[itemId] = new CacheEntry(posterUrl, _timeProvider.GetUtcNow().Add(_ttl));
+        _entries[itemId] = new CacheEntry(allowedPoster, dto, _timeProvider.GetUtcNow().Add(_ttl));
     }
 
     /// <summary>
@@ -50,14 +60,31 @@ public sealed class TmdbPosterCache
     /// <returns>True when a non-expired TMDB poster URL is cached.</returns>
     public bool TryGet(Guid itemId, out string posterUrl)
     {
-        if (_entries.TryGetValue(itemId, out var entry) && entry.ExpiresAt > _timeProvider.GetUtcNow())
+        if (TryGetEntry(itemId, out var entry) && entry.Url is not null)
         {
             posterUrl = entry.Url;
             return true;
         }
 
-        _entries.TryRemove(itemId, out _);
         posterUrl = string.Empty;
+        return false;
+    }
+
+    /// <summary>
+    /// Looks up a still-valid search stub DTO for item detail requests.
+    /// </summary>
+    /// <param name="itemId">Synthetic search item id.</param>
+    /// <param name="dto">The cached DTO when found.</param>
+    /// <returns>True when a non-expired stub DTO is cached.</returns>
+    public bool TryGetDto(Guid itemId, out BaseItemDto dto)
+    {
+        if (TryGetEntry(itemId, out var entry) && entry.Dto is not null)
+        {
+            dto = entry.Dto;
+            return true;
+        }
+
+        dto = new BaseItemDto();
         return false;
     }
 
@@ -78,5 +105,18 @@ public sealed class TmdbPosterCache
             && string.Equals(uri.Host, "image.tmdb.org", StringComparison.OrdinalIgnoreCase);
     }
 
-    private sealed record CacheEntry(string Url, DateTimeOffset ExpiresAt);
+    private bool TryGetEntry(Guid itemId, out CacheEntry entry)
+    {
+        if (_entries.TryGetValue(itemId, out var found) && found.ExpiresAt > _timeProvider.GetUtcNow())
+        {
+            entry = found;
+            return true;
+        }
+
+        _entries.TryRemove(itemId, out _);
+        entry = new CacheEntry(null, null, DateTimeOffset.MinValue);
+        return false;
+    }
+
+    private sealed record CacheEntry(string? Url, BaseItemDto? Dto, DateTimeOffset ExpiresAt);
 }

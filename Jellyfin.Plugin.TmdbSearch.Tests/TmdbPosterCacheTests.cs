@@ -43,6 +43,27 @@ public sealed class TmdbPosterCacheTests
     }
 
     /// <summary>
+    /// Verifies a search stub DTO can be served later even when no poster URL is present.
+    /// </summary>
+    [Fact]
+    public void Set_StoresDtoForItemDetailLookup()
+    {
+        var cache = new TmdbPosterCache();
+        var itemId = Guid.Parse("3ed52899-c7ff-a850-617d-da69c07207bf");
+        var dto = new MediaBrowser.Model.Dto.BaseItemDto
+        {
+            Id = itemId,
+            Name = "Fight Club",
+        };
+
+        cache.Set(itemId, dto, posterUrl: null);
+
+        Assert.True(cache.TryGetDto(itemId, out var stored));
+        Assert.Equal("Fight Club", stored.Name);
+        Assert.False(cache.TryGet(itemId, out _));
+    }
+
+    /// <summary>
     /// Verifies expired entries are not served after the TTL elapses.
     /// </summary>
     [Fact]
