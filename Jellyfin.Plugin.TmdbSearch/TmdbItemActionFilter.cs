@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -125,7 +126,8 @@ public sealed class TmdbItemActionFilter : IAsyncActionFilter, IAsyncResultFilte
         ControllerActionDescriptor descriptor,
         Action<IActionResult> setResult)
     {
-        if (!IsItemDetailAction(descriptor.ActionName)
+        if (!PluginSettings.Current.EnableGetItemStubFallback
+            || !IsItemDetailAction(descriptor.ActionName)
             || !TryGetItemId(ctx, out var itemId)
             || !_stubCache.TryGetDto(itemId, out var dto))
         {

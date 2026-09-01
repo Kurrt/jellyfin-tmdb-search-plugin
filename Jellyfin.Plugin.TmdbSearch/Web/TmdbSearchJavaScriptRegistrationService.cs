@@ -165,7 +165,7 @@ public sealed class TmdbSearchJavaScriptRegistrationService : IHostedService, ID
             var pluginId = Plugin.PluginId.ToString();
             var pluginName = Plugin.Instance?.Name ?? "TMDB Search";
             var pluginVersion = typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "unknown";
-            var script = WebInjection.ReadAsyncStreamLoaderScript();
+            var script = WebInjection.BuildClientScript(Plugin.Instance?.Configuration);
             var payloadType = registerMethod.GetParameters()[0].ParameterType;
             var payload = CreateNewtonsoftObject(
                 payloadType,

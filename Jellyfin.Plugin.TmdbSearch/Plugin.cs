@@ -32,6 +32,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
         Instance = this;
         _logger = logger;
+        PluginSettings.Bind(static () => Instance?.Configuration);
     }
 
     private readonly ILogger<Plugin> _logger;

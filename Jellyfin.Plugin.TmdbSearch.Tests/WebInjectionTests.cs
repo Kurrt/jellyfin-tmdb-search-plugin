@@ -1,3 +1,4 @@
+using Jellyfin.Plugin.TmdbSearch.Configuration;
 using Jellyfin.Plugin.TmdbSearch.Web;
 using Xunit;
 
@@ -62,10 +63,34 @@ public sealed class WebInjectionTests
             Contents = "<html><body></body></html>",
         };
 
-        var transformed = WebInjection.ApplyTransformation(payload, enabled: true);
+        var transformed = WebInjection.ApplyTransformation(payload, enabled: true, new PluginConfiguration());
 
         Assert.Contains(WebInjection.ScriptElementId, transformed, StringComparison.Ordinal);
+        Assert.Contains("window.__tmdbsearchFeatures=", transformed, StringComparison.Ordinal);
         Assert.Contains("proto.getItem = function", transformed, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies disabled client flags are serialized into the injected preamble.
+    /// </summary>
+    [Fact]
+    public void ApplyTransformation_EmbedsDisabledClientFlags()
+    {
+        var payload = new WebInjection.FileTransformationPayload
+        {
+            Contents = "<html><body></body></html>",
+        };
+        var config = new PluginConfiguration
+        {
+            EnableHidePageSpinner = false,
+            EnableShowPlayBeforeStreams = false,
+        };
+
+        var transformed = WebInjection.ApplyTransformation(payload, enabled: true, config);
+
+        Assert.Contains("\"hidePageSpinner\":false", transformed, StringComparison.Ordinal);
+        Assert.Contains("\"showPlayBeforeStreams\":false", transformed, StringComparison.Ordinal);
+        Assert.Contains("\"immediateTmdbMetadata\":true", transformed, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -90,7 +115,9 @@ public sealed class WebInjectionTests
     [Fact]
     public void PluginConfiguration_EnablesAsyncStreamUiByDefault()
     {
-        var config = new Jellyfin.Plugin.TmdbSearch.Configuration.PluginConfiguration();
+        var config = new PluginConfiguration();
         Assert.True(config.EnableAsyncStreamUi);
+        Assert.True(config.EnableTmdbLibrarySearch);
+        Assert.True(config.EnableImmediateTmdbMetadata);
     }
 }
