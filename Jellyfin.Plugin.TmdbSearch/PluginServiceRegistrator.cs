@@ -1,8 +1,10 @@
 using Jellyfin.Plugin.TmdbSearch.Web;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.TmdbSearch;
 
@@ -26,7 +28,13 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
                 PooledConnectionLifetime = TimeSpan.FromMinutes(5),
             });
 
-        services.AddSingleton<TmdbPosterCache>();
+        services.AddSingleton(sp =>
+        {
+            var paths = sp.GetRequiredService<IApplicationPaths>();
+            var logger = sp.GetRequiredService<ILogger<TmdbPosterCache>>();
+            var persistPath = Path.Combine(paths.DataPath, "tmdbsearch-stubs.json");
+            return new TmdbPosterCache(persistPath: persistPath, logger: logger);
+        });
         services.AddSingleton<TmdbLibraryIndex>();
         services.AddSingleton<GelatoMetaBridge>();
         services.AddSingleton<TmdbSearchActionFilter>();

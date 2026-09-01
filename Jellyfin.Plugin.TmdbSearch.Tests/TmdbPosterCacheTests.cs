@@ -64,6 +64,48 @@ public sealed class TmdbPosterCacheTests
     }
 
     /// <summary>
+    /// Verifies stub DTOs survive a new cache instance by reloading from disk.
+    /// </summary>
+    [Fact]
+    public void Set_PersistsDtoAcrossNewCacheInstance()
+    {
+        var persistPath = Path.Combine(
+            AppContext.BaseDirectory,
+            $"tmdbsearch-stubs-{Guid.NewGuid():N}.json");
+        var itemId = Guid.Parse("3ed52899-c7ff-a850-617d-da69c07207bf");
+        var dto = new MediaBrowser.Model.Dto.BaseItemDto
+        {
+            Id = itemId,
+            Name = "Fight Club",
+        };
+
+        try
+        {
+            var writer = new TmdbPosterCache(persistPath: persistPath);
+            writer.Set(itemId, dto, posterUrl: "https://image.tmdb.org/t/p/w780/p.jpg");
+
+            var reader = new TmdbPosterCache(persistPath: persistPath);
+            Assert.True(reader.TryGetDto(itemId, out var stored));
+            Assert.Equal("Fight Club", stored.Name);
+            Assert.True(reader.TryGet(itemId, out var poster));
+            Assert.Equal("https://image.tmdb.org/t/p/w780/p.jpg", poster);
+        }
+        finally
+        {
+            if (File.Exists(persistPath))
+            {
+                File.Delete(persistPath);
+            }
+
+            var tempPath = $"{persistPath}.tmp";
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    /// <summary>
     /// Verifies expired entries are not served after the TTL elapses.
     /// </summary>
     [Fact]

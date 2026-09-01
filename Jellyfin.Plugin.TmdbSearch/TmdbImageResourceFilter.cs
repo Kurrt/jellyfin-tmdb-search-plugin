@@ -108,12 +108,14 @@ public sealed class TmdbImageResourceFilter : IAsyncResourceFilter, IOrderedFilt
     private static bool TryGetItemId(ResourceExecutingContext ctx, out Guid itemId)
     {
         itemId = Guid.Empty;
-        if (!ctx.RouteData.Values.TryGetValue("itemId", out var raw)
-            || raw is null)
+        if (ctx.RouteData.Values.TryGetValue("itemId", out var raw)
+            && raw is not null
+            && Guid.TryParse(raw.ToString(), out itemId)
+            && itemId != Guid.Empty)
         {
-            return false;
+            return true;
         }
 
-        return Guid.TryParse(raw.ToString(), out itemId) && itemId != Guid.Empty;
+        return TmdbItemActionFilter.TryGetItemIdFromPath(ctx.HttpContext.Request.Path.Value, out itemId);
     }
 }
