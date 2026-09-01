@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "1.0.14.0",
+        "changelog": "Fix empty item details and Play errors: do not serve cached /stub DTOs before GetItem/Gelato, and stop rewriting jellyfin-web getItem Fields",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v1.0.14/jellyfin-plugin-tmdbsearch_1.0.14.0.zip",
+        "checksum": "16c7486ef312317f32476d683c400e7a",
+        "timestamp": "2026-09-01T08:11:41Z"
+      },
+      {
         "version": "1.0.13.0",
         "changelog": "Return empty ThemeMedia and similar accessory payloads for TMDB search stubs instead of 404",
         "targetAbi": "10.11.0.0",

@@ -98,14 +98,13 @@ public sealed class TmdbItemActionFilter : IAsyncActionFilter, IAsyncResultFilte
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Always continue into GetItem. Gelato's insert filter (order 1) materializes the
+    /// library item; skipping the controller here would return the cached Path=/stub DTO
+    /// and prevent SyncStreams from running.
+    /// </remarks>
     public async Task OnActionExecutionAsync(ActionExecutingContext ctx, ActionExecutionDelegate next)
     {
-        if (ctx.ActionDescriptor is ControllerActionDescriptor descriptor
-            && TryServeStub(ctx, descriptor, result => ctx.Result = result))
-        {
-            return;
-        }
-
         await next().ConfigureAwait(false);
     }
 
