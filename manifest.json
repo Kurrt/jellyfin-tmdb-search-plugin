@@ -8,6 +8,14 @@
     "category": "General",
     "versions": [
       {
+        "version": "2.0.0.0",
+        "changelog": "Jellyfin 12 only. Intercept Search/Hints as well as Items search. Drops 10.11 support.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/Kurrt/jellyfin-tmdb-search-plugin/releases/download/v2.0.0/jellyfin-plugin-tmdbsearch_2.0.0.0.zip",
+        "checksum": "db32351c206ad7a417ba205673d74546",
+        "timestamp": "2026-09-21T00:03:00Z"
+      },
+      {
         "version": "1.0.18.0",
         "changelog": "Put each search, details-page, series-children, and stub-fallback feature behind a Dashboard toggle with a name and description. All default on.",
         "targetAbi": "10.11.0.0",
