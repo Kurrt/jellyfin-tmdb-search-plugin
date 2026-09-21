@@ -42,7 +42,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     /// <inheritdoc />
     public override string Description =>
-        "Replaces library Items search with direct TMDB lookup for movies and series.";
+        "Replaces library Items search and Search/Hints with direct TMDB lookup for movies and series.";
 
     /// <inheritdoc />
     public override Guid Id => PluginId;

@@ -1,11 +1,5 @@
-using Jellyfin.Data.Enums;
-using Jellyfin.Plugin.TmdbSearch.Configuration;
-using MediaBrowser.Controller.Plugins;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Jellyfin.Plugin.TmdbSearch;
 
@@ -14,10 +8,15 @@ namespace Jellyfin.Plugin.TmdbSearch;
 /// </summary>
 public static class ActionContextExtensions
 {
-    private static readonly HashSet<string> SearchActionNames = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> ItemSearchActionNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "GetItems",
         "GetItemsByUserIdLegacy",
+    };
+
+    private static readonly HashSet<string> SearchHintActionNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "GetSearchHints",
     };
 
     /// <summary>
@@ -32,9 +31,34 @@ public static class ActionContextExtensions
     /// Returns true when the action is a Jellyfin Items search endpoint.
     /// </summary>
     /// <param name="ctx">The action executing context.</param>
-    /// <returns>True for search actions.</returns>
+    /// <returns>True for GetItems and GetItemsByUserIdLegacy.</returns>
+    public static bool IsItemsSearchAction(this ActionExecutingContext ctx) =>
+        ctx.GetActionName() is { } actionName && ItemSearchActionNames.Contains(actionName);
+
+    /// <summary>
+    /// Returns true when the action is Jellyfin 12 Search/Hints typeahead.
+    /// </summary>
+    /// <param name="ctx">The action executing context.</param>
+    /// <returns>True for GetSearchHints.</returns>
+    public static bool IsSearchHintsAction(this ActionExecutingContext ctx) =>
+        ctx.GetActionName() is { } actionName && SearchHintActionNames.Contains(actionName);
+
+    /// <summary>
+    /// Returns true when the action is a search endpoint this plugin should intercept.
+    /// </summary>
+    /// <param name="ctx">The action executing context.</param>
+    /// <returns>True for Items search and Search/Hints.</returns>
     public static bool IsApiSearchAction(this ActionExecutingContext ctx) =>
-        ctx.GetActionName() is { } actionName && SearchActionNames.Contains(actionName);
+        ctx.IsItemsSearchAction() || ctx.IsSearchHintsAction();
+
+    /// <summary>
+    /// Returns true when the MVC action name is a known search endpoint.
+    /// </summary>
+    /// <param name="actionName">The current action name.</param>
+    /// <returns>True for GetItems, GetItemsByUserIdLegacy, and GetSearchHints.</returns>
+    public static bool IsApiSearchActionName(string? actionName) =>
+        actionName is not null
+        && (ItemSearchActionNames.Contains(actionName) || SearchHintActionNames.Contains(actionName));
 
     /// <summary>
     /// Tries to read a typed action argument from the model binder.

@@ -54,7 +54,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public int CacheTtlSeconds { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether movie/series Items search is replaced with TMDB.
+    /// Gets or sets a value indicating whether movie/series Items search and Search/Hints are replaced with TMDB.
     /// Prefix a query with <c>local:</c> to use native Jellyfin search even when this is on.
     /// </summary>
     public bool EnableTmdbLibrarySearch { get; set; }

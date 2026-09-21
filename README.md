@@ -1,10 +1,10 @@
 # TMDB Search for Jellyfin
 
-Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/) lookup. Works with every client that uses the standard `/Items?SearchTerm=` API (web, Android, iOS, Infuse, Swiftfin, etc.).
+Replace Jellyfin **Items search** and **Search/Hints** with direct [TMDB](https://www.themoviedb.org/) lookup. Works with every client that uses `/Items?SearchTerm=` or `/Search/Hints` (web, Android, iOS, Infuse, Swiftfin, etc.).
 
 ## What it does
 
-- Intercepts movie/series search and queries TMDB directly (fast, Remux-style discovery).
+- Intercepts movie/series search (`/Items?SearchTerm=` and Jellyfin 12 `/Search/Hints`) and queries TMDB directly (fast, Remux-style discovery).
 - If you already have the title in your library (matched by TMDB id), returns the real Jellyfin item.
 - If you do not, returns a TMDB result stub and seeds [Gelato](https://github.com/lostb1t/Gelato) so click-to-insert/playback still works.
 - On the **Jellyfin web** item page, metadata comes from TMDB (and the search stub) immediately. Gelato/AIOStreams fill the version panel afterward with a spinner in that section only. Play stays disabled until a real stream exists — never `Path=/stub`.
@@ -12,7 +12,7 @@ Replace Jellyfin **Items search** with direct [TMDB](https://www.themoviedb.org/
 
 ## Requirements
 
-- Jellyfin **10.11.x**
+- Jellyfin **12.0+** (built against 12.1; not compatible with 10.11)
 - A [TMDB API key](https://www.themoviedb.org/settings/api) (v3)
 - [Gelato](https://github.com/lostb1t/Gelato) for streaming titles you do not already own
 - For Remux-style async stream UI in jellyfin-web (optional but recommended): [File Transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation) and/or [JavaScript Injector](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector)
@@ -53,7 +53,7 @@ Future updates appear in the catalog automatically after you refresh repositorie
 
 ```bash
 dotnet build -c Release
-cp Jellyfin.Plugin.TmdbSearch/bin/Release/net9.0/Jellyfin.Plugin.TmdbSearch.dll \
+cp Jellyfin.Plugin.TmdbSearch/bin/Release/net10.0/Jellyfin.Plugin.TmdbSearch.dll \
    /path/to/jellyfin/plugins/TMDB\ Search/
 ```
 
@@ -141,7 +141,7 @@ dotnet test
    ```bash
    dotnet build -c Release
    zip -j dist/jellyfin-plugin-tmdbsearch_<version>.zip \
-     Jellyfin.Plugin.TmdbSearch/bin/Release/net9.0/Jellyfin.Plugin.TmdbSearch.dll
+     Jellyfin.Plugin.TmdbSearch/bin/Release/net10.0/Jellyfin.Plugin.TmdbSearch.dll
    md5 dist/jellyfin-plugin-tmdbsearch_<version>.zip
    ```
 

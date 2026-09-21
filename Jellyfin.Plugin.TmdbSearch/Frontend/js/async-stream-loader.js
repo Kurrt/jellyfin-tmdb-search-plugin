@@ -235,7 +235,7 @@
     }
 
     /**
-     * Returns jellyfin-web's loading helper. 10.11 exports window.Loading, not window.loading.
+     * Returns jellyfin-web's loading helper. jellyfin-web 12 still exports window.Loading.
      *
      * @returns {object|null} Loading module with show/hide.
      */

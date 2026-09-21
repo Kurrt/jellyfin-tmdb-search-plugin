@@ -89,4 +89,52 @@ public sealed class SearchResultDtoBuilderTests
         Assert.Null(stub.Dto.ServerId);
         Assert.True(stub.Dto.ImageTags is null || stub.Dto.ImageTags.Count == 0);
     }
+
+    /// <summary>
+    /// Verifies Search/Hints reuse the Items stub id so GetItem still resolves the TMDB title.
+    /// </summary>
+    [Fact]
+    public void ToSearchHint_CopiesStubIdentityAndPosterTag()
+    {
+        var hit = new TmdbSearchHit(
+            550,
+            BaseItemKind.Movie,
+            "Fight Club",
+            1999,
+            "/p.jpg",
+            "An insomniac office worker...",
+            91.2);
+        var stub = SearchResultDtoBuilder.CreateStub(hit, "jellyfin-server-id");
+
+        var hint = SearchResultDtoBuilder.ToSearchHint(stub.Dto, "fight");
+
+        Assert.Equal(stub.Dto.Id, hint.Id);
+#pragma warning disable CS0618
+        Assert.Equal(stub.Dto.Id, hint.ItemId);
+#pragma warning restore CS0618
+        Assert.Equal("Fight Club", hint.Name);
+        Assert.Equal("fight", hint.MatchedTerm);
+        Assert.Equal(BaseItemKind.Movie, hint.Type);
+        Assert.Equal(MediaType.Video, hint.MediaType);
+        Assert.Equal(1999, hint.ProductionYear);
+        Assert.False(hint.IsFolder);
+        Assert.Equal("tmdb", hint.PrimaryImageTag);
+    }
+
+    /// <summary>
+    /// Verifies SearchHintResult preserves unpaged total count for Jellyfin 12 typeahead.
+    /// </summary>
+    [Fact]
+    public void ToSearchHintResult_UsesUnpagedTotal()
+    {
+        var hit = new TmdbSearchHit(603, BaseItemKind.Movie, "The Matrix", 1999, null, null, 1);
+        var dto = SearchResultDtoBuilder.CreateStub(hit, "jellyfin-server-id").Dto;
+
+        var result = SearchResultDtoBuilder.ToSearchHintResult([dto], "matrix", 42);
+
+        Assert.Equal(42, result.TotalRecordCount);
+        var hint = Assert.Single(result.SearchHints);
+        Assert.Equal(dto.Id, hint.Id);
+        Assert.Equal("matrix", hint.MatchedTerm);
+    }
 }

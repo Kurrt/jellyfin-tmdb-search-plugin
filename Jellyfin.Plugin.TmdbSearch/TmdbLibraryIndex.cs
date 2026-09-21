@@ -141,7 +141,6 @@ public sealed class TmdbLibraryIndexHostedService : IHostedService
             {
                 IncludeItemTypes = [BaseItemKind.Movie, BaseItemKind.Series],
                 Recursive = true,
-                IsDeadPerson = true,
             };
 
             var items = _libraryManager.GetItemList(query);
