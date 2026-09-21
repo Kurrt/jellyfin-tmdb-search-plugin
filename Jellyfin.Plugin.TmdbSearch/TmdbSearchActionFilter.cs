@@ -6,6 +6,7 @@ using MediaBrowser.Controller.Dto;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Querying;
+using MediaBrowser.Model.Search;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.TmdbSearch;
 
 /// <summary>
-/// Intercepts Jellyfin Items search and serves Remux-style TMDB results.
+/// Intercepts Jellyfin Items search and Search/Hints, serving Remux-style TMDB results.
 /// </summary>
 public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
 {
@@ -78,6 +79,15 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
             return;
         }
 
+        if (ctx.IsSearchHintsAction() && IsSearchHintsMediaExcluded(ctx))
+        {
+            _logger.LogDebug(
+                "TMDB search passthrough for \"{Query}\": Search/Hints excluded media",
+                searchTerm);
+            await next().ConfigureAwait(false);
+            return;
+        }
+
         var requestedTypes = GetRequestedItemTypes(ctx);
         if (requestedTypes.Count == 0)
         {
@@ -133,19 +143,23 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         var dtos = BuildResultDtos(pagedHits);
 
         _logger.LogInformation(
-            "TMDB search \"{Query}\" types=[{Types}] start={Start} limit={Limit} page={Page} total={Total}",
+            "TMDB search \"{Query}\" action={Action} types=[{Types}] start={Start} limit={Limit} page={Page} total={Total}",
             searchTerm,
+            ctx.GetActionName(),
             string.Join(',', requestedTypes),
             startIndex,
             limit,
             dtos.Count,
             hits.Count);
 
-        ctx.Result = new OkObjectResult(new QueryResult<BaseItemDto>
-        {
-            Items = dtos,
-            TotalRecordCount = hits.Count,
-        });
+        ctx.Result = ctx.IsSearchHintsAction()
+            ? new OkObjectResult(SearchResultDtoBuilder.ToSearchHintResult(dtos, searchTerm, hits.Count))
+            : new OkObjectResult(new QueryResult<BaseItemDto>
+            {
+                Items = dtos,
+                TotalRecordCount = hits.Count,
+                StartIndex = startIndex,
+            });
     }
 
     private List<BaseItemDto> BuildResultDtos(IReadOnlyList<TmdbSearchHit> hits)
@@ -209,5 +223,20 @@ public sealed class TmdbSearchActionFilter : IAsyncActionFilter, IOrderedFilter
         }
 
         return requested;
+    }
+
+    /// <summary>
+    /// Returns true when Search/Hints asked for non-media results only (people, genres, etc.).
+    /// </summary>
+    /// <param name="ctx">The action executing context.</param>
+    /// <returns>True when includeMedia is false.</returns>
+    private static bool IsSearchHintsMediaExcluded(ActionExecutingContext ctx)
+    {
+        if (ctx.TryGetActionArgument("includeMedia", out bool includeMedia))
+        {
+            return !includeMedia;
+        }
+
+        return ctx.TryGetActionArgument("includeMedia", out bool? nullable) && nullable is false;
     }
 }

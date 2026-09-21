@@ -3,6 +3,7 @@ using Jellyfin.Data.Enums;
 using MediaBrowser.Model.Dto;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.MediaInfo;
+using MediaBrowser.Model.Search;
 
 namespace Jellyfin.Plugin.TmdbSearch;
 
@@ -106,5 +107,70 @@ public static class SearchResultDtoBuilder
                 hit.Title,
                 posterUrl,
                 hit.Overview));
+    }
+
+    /// <summary>
+    /// Maps a search DTO to Jellyfin 12 Search/Hints payload used by typeahead UIs.
+    /// </summary>
+    /// <param name="dto">Item DTO already returned from Items search.</param>
+    /// <param name="matchedTerm">The original user query.</param>
+    /// <returns>A search hint with the same id clients use for GetItem.</returns>
+    public static SearchHint ToSearchHint(BaseItemDto dto, string matchedTerm)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        string? primaryImageTag = null;
+        if (dto.ImageTags is not null
+            && dto.ImageTags.TryGetValue(ImageType.Primary, out var imageTag)
+            && !string.IsNullOrWhiteSpace(imageTag))
+        {
+            primaryImageTag = imageTag;
+        }
+
+        var hint = new SearchHint
+        {
+            Id = dto.Id,
+            Name = dto.Name ?? string.Empty,
+            MatchedTerm = matchedTerm,
+            Type = dto.Type,
+            MediaType = dto.MediaType,
+            ProductionYear = dto.ProductionYear,
+            IsFolder = dto.IsFolder,
+            PrimaryImageTag = primaryImageTag,
+            RunTimeTicks = dto.RunTimeTicks,
+            Series = dto.SeriesName,
+            IndexNumber = dto.IndexNumber,
+            ParentIndexNumber = dto.ParentIndexNumber,
+        };
+
+#pragma warning disable CS0618
+        // Older clients still read ItemId; Jellyfin 12 SearchController sets both.
+        hint.ItemId = dto.Id;
+#pragma warning restore CS0618
+
+        return hint;
+    }
+
+    /// <summary>
+    /// Wraps search DTOs in the Search/Hints envelope Jellyfin 12 returns.
+    /// </summary>
+    /// <param name="dtos">Paged search result DTOs.</param>
+    /// <param name="matchedTerm">The original user query.</param>
+    /// <param name="totalRecordCount">Unpaged TMDB hit count.</param>
+    /// <returns>The SearchHintResult controller payload.</returns>
+    public static SearchHintResult ToSearchHintResult(
+        IReadOnlyList<BaseItemDto> dtos,
+        string matchedTerm,
+        int totalRecordCount)
+    {
+        ArgumentNullException.ThrowIfNull(dtos);
+
+        var hints = new SearchHint[dtos.Count];
+        for (var index = 0; index < dtos.Count; index++)
+        {
+            hints[index] = ToSearchHint(dtos[index], matchedTerm);
+        }
+
+        return new SearchHintResult(hints, totalRecordCount);
     }
 }
